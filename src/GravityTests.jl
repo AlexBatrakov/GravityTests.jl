@@ -1,16 +1,16 @@
-module GravityTools
+module GravityTests
 
-using StructureSolver
-using DelimitedFiles
+#using StructureSolver
+#using DelimitedFiles
 using Distributions
-using NLsolve
-using Measurements
-using Optim
-using StructArrays
-using Printf
-using Distributed
-using ColorSchemes
-using PyPlot
+#using NLsolve
+#using Measurements
+#using Optim
+#using StructArrays
+#using Printf
+#using Distributed
+#using ColorSchemes
+#using PyPlot
 
 include("Utils.jl")
 include("Refinement2DGrid.jl")
@@ -32,6 +32,10 @@ include("Refinement2DGrid.jl")
 #export TempoParameter, get_TempoParameter, update_pf_theory!, modify_par_file, run_tempo, get_par_file_work, read_params
 #export calculate_t2!
 #export EOSAgnosticTest
+
+export FullUnit, DiffUnit, ContourUnit, DiffContourUnit, RefinementSettings, Refinement2DGrid, precalculate_2DGrid 
+
+
 
 export G_CAV, M_sun, c, d, rad
 export  lvl_1σ, lvl_2σ, lvl_3σ, lvl_4σ, lvl_5σ, lvl_6σ, lvl_7σ, lvl_68CL, lvl_90CL, lvl_95CL, lvl_99CL

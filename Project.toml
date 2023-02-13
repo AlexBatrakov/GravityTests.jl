@@ -2,3 +2,6 @@ name = "GravityTests"
 uuid = "77089ad6-a074-496b-85b3-7e21fcf7ee74"
 authors = ["Alexander Batrakov <batrakovalex.astro@gmail.com>"]
 version = "0.1.0"
+
+[deps]
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
