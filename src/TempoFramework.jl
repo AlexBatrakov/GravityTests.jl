@@ -1,5 +1,6 @@
 
 struct TempoSettings
+    version::String
     par_file_init::String
     tim_file::String
     add_flag::String
@@ -14,6 +15,7 @@ end
 
 function Base.show(io::IO, tsets::TempoSettings)
     println(io, "Tempo settings:")
+    println(io, "   Version: ", tsets.version)
     println(io, "   Initial par file: ", tsets.par_file_init)
     println(io, "   Working tim file: ", tsets.tim_file)
     println(io, "   Selected additional flags: ", tsets.add_flag)
@@ -29,51 +31,8 @@ function Base.show(io::IO, tsets::TempoSettings)
 	return nothing
 end
 
-TempoSettings(;par_file_init, tim_file, add_flag, fit_XPBDOT, nits_first_step=5, gain_fisrt_step=1.0, params_first_step=Vector{Tuple{String, String, Int64}}[], nits_second_step=0, gain_second_step=1.0, params_second_step=Vector{Tuple{String, String, Int64}}[]) = TempoSettings(par_file_init, tim_file, add_flag, fit_XPBDOT, nits_first_step, gain_fisrt_step, params_first_step, nits_second_step, gain_second_step, params_second_step)
+TempoSettings(;version, par_file_init, tim_file, add_flag, fit_XPBDOT, nits_first_step=5, gain_fisrt_step=1.0, params_first_step=Vector{Tuple{String, String, Int64}}[], nits_second_step=0, gain_second_step=1.0, params_second_step=Vector{Tuple{String, String, Int64}}[]) = TempoSettings(version, par_file_init, tim_file, add_flag, fit_XPBDOT, nits_first_step, gain_fisrt_step, params_first_step, nits_second_step, gain_second_step, params_second_step)
 
-
-#struct STGTest <: AbstractGravityTest
-#    psrname::String
-#    eosname::String
-#    log10alpha0::NamedTuple{(:min, :max, :N), Tuple{Float64, Float64, Int64}}
-#    beta0::NamedTuple{(:min, :max, :N), Tuple{Float64, Float64, Int64}}
-#end
-#
-#STGTest(;psrname, eosname, log10alpha0, beta0) = STGTest(psrname, eosname, log10alpha0, beta0)
-#STGTest(;psrname, eosname, alpha0, beta0) = STGTest(psrname, eosname, (min = log10(abs(alpha0.min)), min = log10(abs(alpha0.max)), N = alpha0.N), beta0)
-#
-#function Base.show(io::IO, test::STGTest)
-#    println(io, "STG test")
-#    println(io, "Name of the pulsar: ", test.psrname)
-#    println(io, "Equation of state: ", test.eosname)
-#    println(io, "log10|alpha0| range: ", test.log10alpha0)
-#    println(io, "beta0 range: ", test.beta0)
-#	return nothing
-#end
-#
-#struct MassMassTest <: AbstractGravityTest
-#    psrname::String
-#    eosname::String
-#    alpha0::Float64
-#    beta0::Float64
-#    mpsr::NamedTuple{(:min, :max, :N), Tuple{Float64, Float64, Int64}}
-#    mcomp::NamedTuple{(:min, :max, :N), Tuple{Float64, Float64, Int64}}
-#    path_to_grids::String
-#end
-#
-#MassMassTest(;psrname, eosname, alpha0, beta0, mpsr, mcomp, path_to_grids) = MassMassTest(psrname, eosname, alpha0, beta0, mpsr, mcomp, path_to_grids)
-#
-#function Base.show(io::IO, test::MassMassTest)
-#    println(io, "Mass-mass test")
-#    println(io, "Name of the pulsar: ", test.psrname)
-#    println(io, "Equation of state: ", test.eosname)
-#    println(io, "alpha0 value: ", test.alpha0)
-#    println(io, "beta0 value: ", test.beta0)
-#    println(io, "Pulsar mass range: ", test.mpsr)
-#    println(io, "Companion mass range: ", test.mcomp)
-#    println(io, "Path to grids: ", test.path_to_grids)
-#	return nothing
-#end
 
 mutable struct TempoFramework{T <: AbstractGravityTest}
     test::T
