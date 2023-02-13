@@ -1,36 +1,149 @@
+abstract type AbstractRefinementUnit end
+
+struct FullUnit <: AbstractRefinementUnit
+    name::Symbol
+    max::Float64
+    min::Float64
+end
+
+function Base.show(io::IO, ru::FullUnit)
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "Full refinement unit:")
+    println(io, ' '^indent, "   Name of variable: ", ru.name)
+    println(io, ' '^indent, "   Maximum value: ", ru.max)
+    print(io,   ' '^indent, "   Minimum value: ", ru.min)
+	return nothing
+end
+
+struct DiffUnit <: AbstractRefinementUnit
+    name::Symbol
+    max::Float64
+    min::Float64
+    diff::Float64
+end
+
+function Base.show(io::IO, ru::DiffUnit)
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "Difference refinement unit:")
+    println(io, ' '^indent, "    Name of variable: ", ru.name)
+    println(io, ' '^indent, "    Maximum value: ", ru.max)
+    println(io, ' '^indent, "    Minimum value: ", ru.min)
+    print(io,   ' '^indent, "    Maximal difference: ", ru.diff)
+	return nothing
+end
+
+struct ContourUnit <: AbstractRefinementUnit
+    name::Symbol
+    max::Float64
+    min::Float64
+    contours::Vector{Float64}
+end
+
+function Base.show(io::IO, ru::ContourUnit)
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "Contour refinement unit:")
+    println(io, ' '^indent, "    Name of variable: ", ru.name)
+    println(io, ' '^indent, "    Maximum value: ", ru.max)
+    println(io, ' '^indent, "    Minimum value: ", ru.min)
+    print(io,   ' '^indent, "    Contour levels: ", ru.contours)
+	return nothing
+end
+
+struct DiffContourUnit <: AbstractRefinementUnit
+    name::Symbol
+    max::Float64
+    min::Float64
+    diff::Float64
+    contours::Vector{Float64}
+end
+
+function Base.show(io::IO, ru::DiffContourUnit)
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "Diffeerence and contour refinement unit:")
+    println(io, ' '^indent, "   Name of variable: ", ru.name)
+    println(io, ' '^indent, "   Maximum value: ", ru.max)
+    println(io, ' '^indent, "   Minimum value: ", ru.min)
+    println(io, ' '^indent, "   Maximal difference: ", ru.diff)
+    print(io,   ' '^indent, "   Contour levels: ", ru.contours)
+	return nothing
+end
+
+struct RefinementSettings{T}
+    desired_refinement_level::Int64
+    parallel::Bool
+    units::T
+end
+
+function Base.show(io::IO, ref_sets::RefinementSettings{T}) where {T}
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "Grid Refinement settings:")
+	println(io, ' '^indent, "    Desired refinement level: ", ref_sets.desired_refinement_level)
+    println(io, ' '^indent, "    Parallel computation: ", ref_sets.parallel)
+    for unit in ref_sets.units
+        println(IOContext(io, :indent => indent+4), unit)
+    end
+	return nothing
+end
+
+function RefinementSettings(units...; desired_refinement_level::Int64, parallel::Bool)
+    return RefinementSettings(desired_refinement_level, parallel, units)
+end
+
 abstract type General2DGrid end
 
-struct Refinement2DGrid <: General2DGrid
+struct Refinement2DGrid{T} <: General2DGrid
     value::Dict{Symbol,Matrix{Float64}}
-    status::Matrix{Int64}
-    ref_level::Matrix{Int64}
     params::Dict{Symbol,Float64}
+    min::Dict{Symbol,Float64}
+    max::Dict{Symbol,Float64}
     x::Vector{Float64}
     y::Vector{Float64}
     N_x::Int64
     N_y::Int64
-    function Refinement2DGrid(value::Dict, status::Matrix{Int64}, ref_level::Matrix{Int64}, params::Dict, x::Vector{Float64}, y::Vector{Float64})
-        return new(value, status, ref_level, params, x, y, length(x), length(y))
-    end
+    ref_sets::RefinementSettings{T}
+    ref_level::Matrix{Int64}
+    status::Matrix{Int64}
 end
 
-function Refinement2DGrid(value::Dict, x::Vector{Float64}, y::Vector{Float64})
+function Refinement2DGrid(x::Vector{Float64}, y::Vector{Float64}, ref_sets::T) where {T <: RefinementSettings}
+    value = Dict{Symbol,Matrix{Float64}}()
     params = Dict{Symbol,Float64}()
-    status = fill(-1,length(x),length(y))
-    ref_level = fill(0,length(x),length(y))
-    return Refinement2DGrid(value, status, ref_level, params, x, y)
+    min = Dict{Symbol,Float64}()
+    max = Dict{Symbol,Float64}()
+    N_x = length(x)
+    N_y = length(y)
+    ref_level = [0 for i in 1:length(x), j in 1:length(y)]
+    status = [-1 for i in 1:length(x), j in 1:length(y)]
+    return Refinement2DGrid(value, params, min, max, x, y, N_x, N_y, ref_sets, ref_level, status)
+end
+
+function Base.show(io::IO, grid::Refinement2DGrid{T}) where {T}
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "Refinement2DGrid:")
+	println(io, ' '^indent, "    Values: ", grid.value)
+    println(io, ' '^indent, "    Parameters: ", grid.params)
+    println(io, ' '^indent, "    Mimimal values: ", grid.min)
+    println(io, ' '^indent, "    Maximal values: ", grid.max)
+    println(io, ' '^indent, "    X axis with $(grid.N_x) values: ", grid.x)
+    println(io, ' '^indent, "    Y axis with $(grid.N_y) values: ", grid.y)
+    print(io, ' '^indent, grid.ref_sets)
+	return nothing
 end
 
 function precalculate_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
+    target_keys = Base.return_types(target_function, Tuple{Float64,Float64})[1].parameters[1]
+    for key in target_keys
+        grid.value[key] = fill(-1, grid.N_x, grid.N_y)
+    end
     for i in 1:grid.N_x, j in 1:grid.N_y
-        target_keys, target_values = target_function(grid.x[i], grid.y[j])
-        for (i_key, key) in enumerate(target_keys)
-            if haskey(grid.value, key)
-                grid.value[key][i, j] = target_values[i_key]
-            else
-                grid.value[key] = fill(-1, grid.N_x, grid.N_y)
-            end
+        target_output = target_function(grid.x[i], grid.y[j])
+        for (key, value) in pairs(target_output)
+            grid.value[key][i, j] = value
         end
+    end
+    for key in target_keys
+        grid.min[key] = minimum(x->isnan(x) ? +Inf : x, grid.value[key])
+        grid.max[key] = maximum(x->isnan(x) ? -Inf : x, grid.value[key])
     end
     grid.status .= 1
     params_function!(grid)
@@ -299,4 +412,54 @@ function calculate_cell!(p, i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid
     end
 
     return calc_counter
+end
+
+function cell_selector(i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid)
+    combined_case = true
+    for ref_unit in grid.ref_sets.units
+        combined_case *= cell_selector(i_cell, j_cell, grid, ref_unit)
+    end
+    return combined_case
+end
+
+function cell_selector(i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid, ref_unit::FullUnit)
+    cell = @view grid.value[ref_unit.name][i_cell:i_cell+1,j_cell:j_cell+1]
+    value_cell_min = minimum(cell)
+    value_cell_max = maximum(cell)
+    min_case = ref_unit.min < value_cell_min
+    max_case = ref_unit.max > value_cell_max
+    return min_case && max_case
+end
+
+function cell_selector(i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid, ref_unit::DiffUnit)
+    cell = @view grid.value[ref_unit.name][i_cell:i_cell+1,j_cell:j_cell+1]
+    value_cell_min = minimum(cell)
+    value_cell_max = maximum(cell)
+    min_case = ref_unit.min < value_cell_min
+    max_case = ref_unit.max > value_cell_max
+    diff_case = value_cell_max - value_cell_min > ref_unit.diff
+    return diff_case && min_case && max_case
+end
+    
+function cell_selector(i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid, ref_unit::ContourUnit)
+    cell = @view grid.value[ref_unit.name][i_cell:i_cell+1,j_cell:j_cell+1]
+    value_cell_min = minimum(cell)
+    value_cell_max = maximum(cell)
+    min_case = ref_unit.min < value_cell_min
+    max_case = ref_unit.max > value_cell_max
+    value_min = grid.params[:ref_unit.name]
+    contour_case = any(value_cell_min .< value_min .+ ref_unit.contours .< value_cell_max)
+    return contour_case && min_case && max_case
+end
+
+function cell_selector(i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid, ref_unit::DiffContourUnit)
+    cell = @view grid.value[ref_unit.name][i_cell:i_cell+1,j_cell:j_cell+1]
+    value_cell_min = minimum(cell)
+    value_cell_max = maximum(cell)
+    min_case = ref_unit.min < value_cell_min
+    max_case = ref_unit.max > value_cell_max
+    value_min = grid.params[:ref_unit.name]
+    contour_case = any(value_cell_min .< value_min .+ ref_unit.contours .< value_cell_max)
+    diff_case = (value_cell_max - value_cell_min > ref_unit.diff)
+    return contour_case && contour_case && min_case && max_case
 end
