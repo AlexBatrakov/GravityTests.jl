@@ -289,6 +289,7 @@ function single_core_refine_2DGrid(grid::Refinement2DGrid, target_function, para
                 i_cell, j_cell = cell
                 if cell_selector(i_cell, j_cell, grid) && !cell_selector_status[i_cell, j_cell]
                     push!(cells_to_refine, cell)
+                    cell_selector_status[i_cell, j_cell] = true
                 end
             end
         end
@@ -456,7 +457,7 @@ function parallel_precalculate_2DGrid(grid::Refinement2DGrid, target_function, p
                     if idx[2] > grid.N_y
                         break
                     end
-                    println("myid = $(myid()), p = $p, idx = $idx")
+#                    println("myid = $(myid()), p = $p, idx = $idx")
                     target_output = remotecall_fetch(target_function, p, grid.x[idx[1]], grid.y[idx[2]])
                     put!(channel, true)
                     for (key, value) in pairs(target_output)
@@ -508,6 +509,7 @@ function pmap_parallel_precalculate_2DGrid(grid::Refinement2DGrid, target_functi
 end
 =#
 
+
 function parallel_refine_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
     value_ref = refine_Dict_of_2DArrays(grid.value)
     params_ref = copy(grid.params)
@@ -526,6 +528,9 @@ function parallel_refine_2DGrid(grid::Refinement2DGrid, target_function, params_
     interp_counter = 0
     calc_counter = 0
     iterations_counter = 0
+    np = nprocs()
+
+    update_calc_counter(n_calc) = (calc_counter+=n_calc)
 
     cell_selector_status = fill(false, grid.N_x-1, grid.N_y-1)
 
@@ -565,11 +570,13 @@ function parallel_refine_2DGrid(grid::Refinement2DGrid, target_function, params_
                                     break
                                 end
                                 i_cell, j_cell = cells_to_refine[idx]
-                                calc_counter += calculate_cell!(p, i_cell, j_cell, grid, grid_refined, target_function)
+                                n_calc = calculate_cell!(p, i_cell, j_cell, grid, grid_refined, target_function)
+                                update_calc_counter(n_calc)
                                 for cell in [(i_cell-1, j_cell), (i_cell, j_cell-1), (i_cell+1, j_cell), (i_cell, j_cell+1)]
                                     i_cell, j_cell = cell
                                     if cell_selector(i_cell, j_cell, grid) && !cell_selector_status[i_cell, j_cell]
                                         push!(cells_to_refine, cell)
+                                        cell_selector_status[i_cell, j_cell] = true
                                     end
                                 end
                                 put!(channel, true)
@@ -594,22 +601,30 @@ function parallel_refine_2DGrid(grid::Refinement2DGrid, target_function, params_
     return grid_refined
 end
 
-
 function calculate_cell!(p, i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid, grid_refined::Refinement2DGrid, target_function)
     i_cell_ref = 2*i_cell-1
     j_cell_ref = 2*j_cell-1
     new_ref_level = maximum(grid.ref_level[i_cell:i_cell+1,j_cell:j_cell+1]) + 1
-    calc_counter = 0
+    n_calc = 0
+
     for i_ref in i_cell_ref:i_cell_ref+2, j_ref in j_cell_ref:j_cell_ref+2
         if grid_refined.status[i_ref,j_ref] < 1
             is_on_grid = (mod(i_ref,2)*mod(j_ref,2) == 1) 
-            calc_keys, calc_values = remotecall_fetch(target_function, p, grid_refined.x[i_ref], grid_refined.y[j_ref])
-            calc_counter +=1
-            for (i_key, key) in enumerate(calc_keys)
-                grid_refined.value[key][i_ref, j_ref] = calc_values[i_key]
+            target_output = remotecall_fetch(target_function, p, grid_refined.x[i_ref], grid_refined.y[j_ref])
+            n_calc += 1
+            for (key, value) in pairs(target_output)
+                grid_refined.value[key][i_ref, j_ref] = value
+                if !isnan(value)
+                    grid_refined.min[key] = value < grid_refined.min[key] ? value : grid_refined.min[key]
+                    grid_refined.max[key] = value > grid_refined.max[key] ? value : grid_refined.max[key]
+                end
                 if is_on_grid
-                    grid.value[key][div(i_ref,2)+1,div(j_ref,2)+1] = calc_values[i_key]
+                    grid.value[key][div(i_ref,2)+1,div(j_ref,2)+1] = value
                     grid.ref_level[div(i_ref,2)+1,div(j_ref,2)+1] = new_ref_level-1
+                    if !isnan(value)
+                        grid.min[key] = value < grid.min[key] ? value : grid.min[key]
+                        grid.max[key] = value > grid.max[key] ? value : grid.max[key]
+                    end
                 end
             end
             grid_refined.status[i_ref,j_ref] = 1
@@ -619,5 +634,5 @@ function calculate_cell!(p, i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid
         end
     end
 
-    return calc_counter
+    return n_calc
 end
