@@ -11,6 +11,7 @@ using Distributions
 using Distributed
 #using ColorSchemes
 #using PyPlot
+using ProgressMeter
 
 include("Utils.jl")
 include("Refinement2DGrid.jl")
