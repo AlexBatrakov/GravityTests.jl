@@ -9,7 +9,7 @@ ref_sets = RefinementSettings(
     desired_refinement_level = 5,
     parallel = false,
 #    DiffUnit(:val1, diff = 0.1),
-#    ContourUnit(:val1, contours = [0.5])
+#    ContourUnit(:val1, contours = [0.5,0.7])
     DiffContourUnit(:val1, diff = 0.05, contours = [0.5])
     )
 
@@ -67,3 +67,5 @@ grid_array[1] = grid_init
 for i in 2:9
     grid_array[i] = refine_2DGrid(grid_array[i-1], target_function, params_function!)
 end
+
+grid_refined = calculate_2DGrid(grid_init, target_function, params_function!)

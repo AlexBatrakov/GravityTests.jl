@@ -34,7 +34,7 @@ include("Refinement2DGrid.jl")
 #export calculate_t2!
 #export EOSAgnosticTest
 
-export FullUnit, DiffUnit, ContourUnit, DiffContourUnit, RefinementSettings, Refinement2DGrid, precalculate_2DGrid, refine_2DGrid, parallel_precalculate_2DGrid
+export FullUnit, DiffUnit, ContourUnit, DiffContourUnit, RefinementSettings, Refinement2DGrid, precalculate_2DGrid, refine_2DGrid, calculate_2DGrid
 
 
 

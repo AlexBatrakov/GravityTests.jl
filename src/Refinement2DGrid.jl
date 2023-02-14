@@ -204,7 +204,15 @@ function cell_selector(i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid, ref
 end
 
 #--------------------------------------------------------------------------------------------------------------
-# Parallel routines
+# Genneral routines
+
+function calculate_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
+    precalculate_2DGrid(grid, target_function, params_function!)
+    for i in 1:grid.ref_sets.desired_refinement_level
+        grid = refine_2DGrid(grid, target_function, params_function!)
+    end
+    return grid
+end
 
 function precalculate_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
     if grid.ref_sets.parallel == true
