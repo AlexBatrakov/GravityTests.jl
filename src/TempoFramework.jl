@@ -1,3 +1,165 @@
+mutable struct TempoParameter{T1, T2, T3}
+    name::String
+    name_symbol::Symbol
+    line::String
+    value::T1
+    flag::T2
+    uncertainty::T3
+end
+
+TP = TempoParameter
+
+function TempoParameter(line::String)
+    line_split = split(line)
+    n = length(line_split)
+    line_parsed = parse_tparam_field.(line_split)
+    line_parsed_types = typeof.(line_parsed)
+    if n >= 3 && line_parsed_types[1:3] == [String, String, String]
+        n_name = 3
+        name =        String(line_split[1] * " " * line_split[2] * " " * line_split[3])
+        name_symbol = Symbol(name)
+    else
+        n_name = 1
+        name =        String(line_split[1])
+        name_symbol = Symbol(name)
+    end
+
+    value = n_name < n ? parse_tparam_field(line_split[n_name + 1]) : nothing
+
+    flag = n_name + 1 < n ? parse_tparam_field(line_split[n_name + 2]) : nothing
+
+    uncertainty = n_name + 2 < n ? parse_tparam_field(line_split[n_name + 3]) : nothing
+
+    tparam = TempoParameter(name, name_symbol, line, value, flag, uncertainty)
+    
+    update_tparam_line!(tparam)
+
+    return tparam
+end
+
+function TempoParameter(name, value, flag=nothing, uncertainty=nothing)
+    name_symbol = Symbol(name)
+    tparam = TempoParameter(name, name_symbol, "", value, flag, uncertainty)
+    update_tparam_line!(tparam)
+    return tparam
+end
+
+function Base.show(io::IO, tparam::TempoParameter)
+    indent = get(io, :indent, 0)
+    print(io, " "^indent, tparam.name)
+    print(io, " ", tparam.value)
+    if tparam.flag !== nothing
+        print(io, " ", tparam.flag)
+    end
+    if tparam.uncertainty !== nothing
+        print(io, " ", tparam.uncertainty)
+    end
+	return nothing
+end
+
+
+function update_tparam_line!(tparam::TempoParameter)
+    n_name = 20
+    n_value = 27
+    n_flag = 6
+    n_uncertainty = 27
+    line = tparam.name * " "^(n_name - length(tparam.name))
+    value_str = string(tparam.value)
+    line *=  value_str * " "^(n_value - length(value_str))
+    flag_str = string(tparam.flag)
+    line *= tparam.flag !== nothing ? flag_str * " "^(n_flag - length(flag_str)) : ""
+    uncertainty_str = string(tparam.uncertainty)
+    line *= tparam.uncertainty !== nothing ? uncertainty_str * " "^(n_uncertainty - length(uncertainty_str)) : ""
+    tparam.line = line
+    return line
+end
+
+function parse_tparam_field(value_str)
+    n = length(value_str)
+    value_int64 = tryparse(Int64, value_str)
+    if value_int64 !== nothing
+        return value_int64::Int64
+    end
+    value_float64 = tryparse(Float64, value_str)
+    if (value_float64 !== nothing) && ((value_float64 > 0.0 && n <= 20) || (value_float64 < 0.0 && n <= 21))
+        return value_float64::Float64
+    end
+    return String(value_str)::String
+end
+
+function update_tparam!(tparam::TempoParameter; value=tparam.value, flag=tparam.flag, uncertainty=tparam.uncertainty)
+    tparam.value = value
+    tparam.flag = flag
+    tparam.uncertainty = uncertainty
+    tparam.line = update_tparam_line!(tparam)
+    return tparam
+end
+
+#TempoParameter(name::String, value::T, flag::Int64=-1, uncertainty::Float64=0.0) where {T} = TempoParameter{T}(name, Symbol(name), value, flag, uncertainty)
+#TempoParameter(name_symbol::Symbol, value::T, flag::Int64=-1, uncertainty::Float64=0.0) where {T} = TempoParameter{T}(String(name), name_symbol, value, flag, uncertainty)
+
+
+mutable struct TempoParFile
+    name::String
+    tparams::Dict{Symbol,TempoParameter}
+    order::Vector{Symbol}
+end
+
+TempoParFile(name::String) = TempoParFile(name, Dict{Symbol,TempoParameter}(), Vector{Symbol}())
+
+function Base.show(io::IO, par_file::TempoParFile)
+    println(io, "Tempo parameter file $(par_file.name): ")
+    for (i, name_symbol) in enumerate(par_file.order)
+        #print(IOContext(io, :indent => indent+4), par_file.tparams[name_symbol])
+        print("    ", par_file.tparams[name_symbol].line)
+        if i < length(par_file.order)
+            print("\n")
+        end
+    end
+	return nothing
+end
+
+function read_par_file(par_file::TempoParFile)
+    par_file.order = Vector{Symbol}()
+    open(par_file.name, "r") do file_in
+        for line in eachline(file_in)
+            tparam = TempoParameter(line)
+            par_file.tparams[tparam.name_symbol] = tparam
+            push!(par_file.order, tparam.name_symbol)
+        end
+    end
+end
+
+function write_par_file(par_file::TempoParFile, name_out=par_file.name)
+    open(name_out, "w") do file_out
+        for name_symbol in par_file.order
+            tparam = par_file.tparams[name_symbol]
+            println(file_out, tparam)
+        end
+    end
+end
+
+#=
+struct TempoIteration
+    nits::Int64
+    gain::Float64
+    tparams::Vector{TempoParameter}
+end
+
+function Base.show(io::IO, iter::TempoIteration)
+    indent = get(io, :indent, 0)
+    println(io, " "^indent, "Number of iterations: ", iter.nits)
+    println(io, " "^indent, "GAIN value for convergence stage: ", iter.gain)
+    println(io, " "^indent, "Parameters: ", iter.tparams)
+    if tparam.flag != -1
+        print(io, " ", tparam.flag)
+    end
+    if tparam.uncertainty != 0.0
+        print(io, " ", tparam.uncertainty)
+    end
+	return nothing
+end
+=#
 
 struct TempoSettings
     version::String
@@ -5,12 +167,7 @@ struct TempoSettings
     tim_file::String
     add_flag::String
     fit_XPBDOT::Bool
-    nits_first_step::Int64
-    gain_fisrt_step::Float64
-    params_first_step::Vector{Tuple{String, String, Int64}}
-    nits_second_step::Int64
-    gain_second_step::Float64
-    params_second_step::Vector{Tuple{String, String, Int64}}
+    iters::Vector{Vector{TempoParameter}}
 end
 
 function Base.show(io::IO, tsets::TempoSettings)
@@ -20,32 +177,34 @@ function Base.show(io::IO, tsets::TempoSettings)
     println(io, "   Working tim file: ", tsets.tim_file)
     println(io, "   Selected additional flags: ", tsets.add_flag)
     println(io, "   Fit PBDOT to GR value: ", tsets.fit_XPBDOT)
-    println(io, "   First step:")
-    println(io, "   Number of iterations: ", tsets.nits_first_step)
-    println(io, "   GAIN value for convergence stage: ", tsets.gain_fisrt_step)
-    println(io, "   Parameters: ", tsets.params_first_step)
-    println(io, "   Second step:")
-    println(io, "   Number of iterations: ", tsets.nits_second_step)
-    println(io, "   GAIN value for convergence stage: ", tsets.gain_second_step)
-    print(io,   "   Parameters: ", tsets.params_second_step)
+    for (i,iter) in enumerate(tsets.iters)
+        println(io, "   Tempo parameters in iteration #$i:")
+        for (j, tparam) in enumerate(iter)
+            print(io, "      $tparam")
+            if i != length(tsets.iters) || j != length(iter)
+                print("\n")
+            end
+        end
+    end
 	return nothing
 end
 
-TempoSettings(;version, par_file_init, tim_file, add_flag, fit_XPBDOT, nits_first_step=5, gain_fisrt_step=1.0, params_first_step=Vector{Tuple{String, String, Int64}}[], nits_second_step=0, gain_second_step=1.0, params_second_step=Vector{Tuple{String, String, Int64}}[]) = TempoSettings(version, par_file_init, tim_file, add_flag, fit_XPBDOT, nits_first_step, gain_fisrt_step, params_first_step, nits_second_step, gain_second_step, params_second_step)
+TempoSettings(;version, par_file_init, tim_file, add_flag, fit_XPBDOT, iters=Vector{Vector{TempoParameter}}()) = TempoSettings(version, par_file_init, tim_file, add_flag, fit_XPBDOT, iters)
+
+TempoSettings(args... ;version, par_file_init, tim_file, add_flag, fit_XPBDOT) = TempoSettings(version, par_file_init, tim_file, add_flag, fit_XPBDOT, collect(args))
 
 
 mutable struct TempoFramework{T <: AbstractGravityTest}
     test::T
     tsets::TempoSettings
-    gsets::GridSetttings
-    grid::SimpleGrid
+    grid::Refinement2DGrid
 end
 
 function Base.show(io::IO, tf::TempoFramework)
     println(io, "Tempo framework:")
-    println(io, tf.test)
-    println(io, tf.tsets)
-    print(io, tf.gsets)
+    println(io, "    ", tf.test)
+    println(io, "    ", tf.tsets)
+    print(io,   "    ", tf.gsets)
 	return nothing
 end
 
@@ -359,21 +518,6 @@ function calculate_old!(tf::TempoFramework; add_refinement=0)
 end
 =#
 
-struct TempoParameter{T}
-    name::String
-    value::T
-    flag::Int64
-end
-
-TempoParameter(name::String, value) = TempoParameter(name::String, value, -1)
-
-function Base.show(io::IO, tparam::TempoParameter)
-    print(io, "Tempo parameter: ")
-    print(io, " ", tparam.name)
-    print(io, " ", tparam.value)
-    print(io, " ", tparam.flag)
-	return nothing
-end
 
 function print_tparam(line::String, tparam::TempoParameter)
     flag_string = tparam.flag == -1 ? " " : "$(tparam.flag)"
