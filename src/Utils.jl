@@ -1,3 +1,6 @@
+#--------------------------------------------------------------------------------------------------------------
+# Some statistics stuff
+
 lvl_1σ = quantile(Chisq(2), 0.682689492137086)
 lvl_2σ = quantile(Chisq(2), 0.954499736103642)
 lvl_3σ = quantile(Chisq(2), 0.997300203936740)
@@ -12,47 +15,137 @@ lvl_95CL = quantile(Chisq(2), 0.95)
 lvl_99CL = quantile(Chisq(2), 0.99)
 lvl_997CL = quantile(Chisq(2), 0.997)
 
-abstract type AbstractGravityTest end
 
-Range = NamedTuple{(:min, :max, :N), Tuple{Float64, Float64, Int64}}
-RangedParameter = NamedTuple{(:name, :min, :max, :N), Tuple{String, Float64, Float64, Int64}}
+#--------------------------------------------------------------------------------------------------------------
+# Variables
 
+abstract type AbstractVariable end
 
-struct GeneralTest{T1 <: Union{Float64, Range}, T2 <: Union{Float64, Range}} <: AbstractGravityTest
-    psrname::String
-    eosname::String
-    alpha0::T1
-    log10alpha0::T1
-    beta0::T2
-    param1::RangedParameter
-    param2::RangedParameter
+struct ValueVariable{T} <: AbstractVariable
+    name::String
+    name_symbol::Symbol
+    value::T
 end
 
-GeneralTest(test::GeneralTest, eosname) = GeneralTest(test.psrname, eosname, test.alpha0, test.log10alpha0, test.beta0, test.param1, test.param2) 
+ValueVariable(name::String, value::T) where {T} = ValueVariable{T}(name, Symbol(name), value)
 
-function Base.show(io::IO, test::GeneralTest)
-    println(io, "General test:")
-    println(io,     "   Name of the pulsar:  ", test.psrname)
-    if test.eosname != ""
-        println(io, "   Equation of state:   ", test.eosname)
-    end
-    if typeof(test.alpha0) == Float64 && !isnan(test.alpha0)
-        println(io, "   alpha0:              ", test.alpha0)
-        println(io, "   log10|alpha0|:       ", test.log10alpha0)
-    elseif typeof(test.alpha0) == Range
-        println(io, "   alpha0 range:        ", test.alpha0)
-        println(io, "   log10|alpha0| range: ", test.log10alpha0)
-    end
-    if typeof(test.beta0) == Float64 && !isnan(test.beta0)
-        println(io, "   beta0:               ", test.beta0)
-    elseif typeof(test.beta0) == Range
-        println(io, "   beta0 range:         ", test.beta0)
-    end
-    println(io,     "   First parameter:     ", test.param1)
-    print(io,       "   Second parameter:    ", test.param2)
+ValueVariable(;name::String, value::T) where {T} = ValueVariable{T}(name, Symbol(name), value)
+
+function Base.show(io::IO, var::ValueVariable)
+    indent = get(io, :indent, 0)
+    print(io, " "^indent, var.name)
+    print(io, " ", var.value)
 	return nothing
 end
 
+abstract type AbstractRangeRule end
+
+function transformation(range_rule::T, min, max, N::Int64) where {T <: AbstractRangeRule}
+end
+
+struct LinRule <: AbstractRangeRule end
+
+function transformation(range_rule::LinRule, min, max, N::Int64)
+    lin_values = collect(LinRange(min, max, N))
+    values = lin_values
+    return lin_values, values
+end
+
+struct LogRule <: AbstractRangeRule
+    sign::Int64
+end
+
+function transformation(range_rule::LogRule, min, max, N::Int64)
+    min_log = log10(abs(min))
+    max_log = log10(abs(max))
+    lin_values = collect(LinRange(min_log, max_log, N))
+    values = range_rule.sign .* 10.0 .^ lin_values
+    return lin_values, values
+end
+
+struct RangeVariable{T <: AbstractRangeRule}
+    name::String
+    name_symbol::Symbol
+    min::Float64
+    max::Float64
+    N::Int64
+    range_rule::T
+    lin_values::Vector{Float64}
+    values::Vector{Float64}
+    function RangeVariable{T}(name::String, min, max, N::Int64, range_rule::T) where {T <: AbstractRangeRule}
+        name_symbol = Symbol(name)
+        lin_values, values = transformation(range_rule, min, max, N)
+        return new(name, name_symbol, min, max, N, range_rule, lin_values, values)
+    end
+end
+
+RangeVariable(name::String, min, max, N::Int64, range_rule::T) where {T <: AbstractRangeRule} = RangeVariable{T}(name, min, max, N, range_rule)
+
+function RangeVariable(;name::String, min=nothing, max=nothing, N=nothing, range_rule=nothing)
+    if range_rule == :lin
+        return RangeVariable(name, min, max, N, LinRule())
+    elseif range_rule == :log
+        return RangeVariable(name, min, max, N, LogRule(sign(min)))
+    end
+end
+
+function Base.show(io::IO, var::RangeVariable)
+    indent = get(io, :indent, 0)
+    print(io, " "^indent, var.name)
+    print(io, " [$(var.min), $(var.max)]")
+    print(io, " $(var.N) $(typeof(var).parameters[1]) entries")
+	return nothing
+end
+
+function Variable(;name::String, value=nothing, min=nothing, max=nothing, N=nothing, range_rule=nothing)
+    if value === nothing
+        return RangeVariable(name=name, min=min, max=max, N=N, range_rule=range_rule)
+    else
+        return ValueVariable(name=name, value=value)
+    end
+end
+
+Var = Variable
+
+#--------------------------------------------------------------------------------------------------------------
+# Tests
+
+abstract type AbstractTest end
+
+struct GeneralTest <: AbstractTest
+    rparams::Vector{RangeVariable}
+    vparams::Vector{ValueVariable}
+end
+
+function GeneralTest(args...)
+    params = collect(args)
+    rparams = Vector{RangeVariable}()
+    vparams = Vector{ValueVariable}()
+    for param in params
+        if typeof(param) <: RangeVariable
+            push!(rparams, param)
+        elseif typeof(param) <: ValueVariable
+            push!(vparams, param)
+        end
+    end
+    return GeneralTest(rparams, vparams)
+end
+
+function Base.show(io::IO, test::GeneralTest)
+    println(io, "General test:")
+    println(io, "    Ranged parameters:")
+    for rparam in test.rparams
+        println(io, "        ", rparam)
+    end
+    println(io, "    Valued parameters:")
+    for vparam in test.vparams
+        println(io, "        ", vparam)
+    end
+	return nothing
+end
+
+
+#=
 function read_param!(param, alpha0, log10alpha0, beta0)
     if param.name == "alpha0"
         alpha0 = (min = param.min, max = param.max, N = param.N)
@@ -106,7 +199,7 @@ end
 
 
 GridSetttings(;N_refinement=1, CL=Float64[], contours=Float64[], refinement_type="nice", delta_chisqr_max=10.0, delta_chisqr_diff=1.0, gr_in_chisqr=false) = GridSetttings(N_refinement, CL, contours, refinement_type, delta_chisqr_max, delta_chisqr_diff, gr_in_chisqr)
-
+=#
 
 #=
 function get_label(name)

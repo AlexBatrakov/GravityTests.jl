@@ -34,6 +34,7 @@ include("Refinement2DGrid.jl")
 #export calculate_t2!
 #export EOSAgnosticTest
 
+export LinRule, LogRule, RangeVariable, ValueVariable, Variable, Var, GeneralTest
 export FullUnit, DiffUnit, ContourUnit, DiffContourUnit, RefinementSettings, Refinement2DGrid, precalculate_2DGrid, refine_2DGrid, calculate_2DGrid
 
 

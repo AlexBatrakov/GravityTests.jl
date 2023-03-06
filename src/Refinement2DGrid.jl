@@ -108,7 +108,7 @@ end
 
 abstract type General2DGrid end
 
-struct Refinement2DGrid{T1 <: AbstractRangeRule, T2 <: AbstractRangeRule, T3 <: RefinementSettings} <: General2DGrid
+struct Refinement2DGrid{T1 <: AbstractRangeRule, T2 <: AbstractRangeRule, T3} <: General2DGrid
     vars::Dict{Symbol,Matrix{Float64}}
     params::Dict{Symbol,Float64}
     min::Dict{Symbol,Float64}
@@ -120,7 +120,7 @@ struct Refinement2DGrid{T1 <: AbstractRangeRule, T2 <: AbstractRangeRule, T3 <: 
     status::Matrix{Int64}
 end
 
-function Refinement2DGrid(x::RangeVariable{T1}, y::RangeVariable{T2}, ref_sets::T3) where {T1 <: AbstractRangeRule, T2 <: AbstractRangeRule, T3 <: RefinementSettings}
+function Refinement2DGrid(x::RangeVariable{T1}, y::RangeVariable{T2}, ref_sets::T3) where {T1 <: AbstractRangeRule, T2 <: AbstractRangeRule, T3}
     vars = Dict{Symbol,Matrix{Float64}}()
     params = Dict{Symbol,Float64}()
     min = Dict{Symbol,Float64}()
@@ -133,7 +133,7 @@ end
 function Base.show(io::IO, grid::Refinement2DGrid)
     indent = get(io, :indent, 0)
     println(io, ' '^indent, "Refinement2DGrid:")
-	println(io, ' '^indent, "    Variables: ", grid.vars)
+	println(io, ' '^indent, "    Variables: ", keys(grid.vars))
     println(io, ' '^indent, "    Parameters: ", grid.params)
     println(io, ' '^indent, "    Minimal values: ", grid.min)
     println(io, ' '^indent, "    Maximal values: ", grid.max)
@@ -244,8 +244,8 @@ function refine(grid::Refinement2DGrid)
     y_refined = refine(grid.y)
     ref_sets_refined = grid.ref_sets
     ref_level_refined = refine(grid.ref_level)
-    status_refined = refine_2Darray(grid.status)
-    grid_refined = Refinement2DGrid(value_refined, params_refined, min_refined, max_refined, x_refined, y_refined, ref_sets_refined, ref_level_refined, status_refined)
+    status_refined = refine(grid.status)
+    grid_refined = Refinement2DGrid(vars_refined, params_refined, min_refined, max_refined, x_refined, y_refined, ref_sets_refined, ref_level_refined, status_refined)
     return grid_refined
 end
 
@@ -285,7 +285,7 @@ function single_core_precalculate_2DGrid(grid::Refinement2DGrid, target_function
         grid.vars[key] = fill(-1, grid.x.N, grid.y.N)
     end
     for i in 1:grid.x.N, j in 1:grid.y.N
-        target_output = target_function(grid.x[i], grid.y[j])
+        target_output = target_function(grid.x.values[i], grid.y.values[j])
         for (key, value) in pairs(target_output)
             grid.vars[key][i, j] = value
         end
@@ -358,10 +358,10 @@ function calculate_cell!(i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid, g
     for i_ref in i_cell_ref:i_cell_ref+2, j_ref in j_cell_ref:j_cell_ref+2
         if grid_refined.status[i_ref,j_ref] < 1
             is_on_grid = (mod(i_ref,2)*mod(j_ref,2) == 1) 
-            target_output = target_function(grid_refined.x[i_ref], grid_refined.y[j_ref])
+            target_output = target_function(grid_refined.x.values[i_ref], grid_refined.y.values[j_ref])
             n_calc += 1
             for (key, value) in pairs(target_output)
-                grid_refined.value[key][i_ref, j_ref] = value
+                grid_refined.vars[key][i_ref, j_ref] = value
                 if !isnan(value)
                     grid_refined.min[key] = value < grid_refined.min[key] ? value : grid_refined.min[key]
                     grid_refined.max[key] = value > grid_refined.max[key] ? value : grid_refined.max[key]
@@ -390,40 +390,40 @@ function interpolate_cell!(i::Int64, j::Int64, grid::Refinement2DGrid, grid_refi
     j_ref = 2*j-1
     n_inter = 0
     if grid_refined.status[i_ref, j_ref+1] == -1 
-        for key in keys(grid_refined.value)
-            grid_refined.value[key][i_ref, j_ref+1] = 0.5*(grid.vars[key][i,j]+grid.vars[key][i,j+1])
+        for key in keys(grid_refined.vars)
+            grid_refined.vars[key][i_ref, j_ref+1] = 0.5*(grid.vars[key][i,j]+grid.vars[key][i,j+1])
         end
         grid_refined.ref_level[i_ref, j_ref+1] = min(grid.ref_level[i,j], grid.ref_level[i,j+1])
         grid_refined.status[i_ref, j_ref+1] = 0
         n_inter += 1
     end
     if grid_refined.status[i_ref+1, j_ref] == -1
-        for key in keys(grid_refined.value) 
-            grid_refined.value[key][i_ref+1, j_ref] = 0.5*(grid.vars[key][i,j]+grid.vars[key][i+1,j])
+        for key in keys(grid_refined.vars) 
+            grid_refined.vars[key][i_ref+1, j_ref] = 0.5*(grid.vars[key][i,j]+grid.vars[key][i+1,j])
         end
         grid_refined.ref_level[i_ref+1, j_ref] = min(grid.ref_level[i,j], grid.ref_level[i+1,j])
         grid_refined.status[i_ref+1, j_ref] = 0
         n_inter += 1
     end
     if grid_refined.status[i_ref+1, j_ref+2] == -1 
-        for key in keys(grid_refined.value)
-            grid_refined.value[key][i_ref+1, j_ref+2] = 0.5*(grid.vars[key][i,j+1]+grid.vars[key][i+1,j+1])
+        for key in keys(grid_refined.vars)
+            grid_refined.vars[key][i_ref+1, j_ref+2] = 0.5*(grid.vars[key][i,j+1]+grid.vars[key][i+1,j+1])
         end
         grid_refined.ref_level[i_ref+1, j_ref+2] = min(grid.ref_level[i,j+1], grid.ref_level[i+1,j+1])
         grid_refined.status[i_ref+1, j_ref+2] = 0
         n_inter += 1
     end
     if grid_refined.status[i_ref+2, j_ref+1] == -1 
-        for key in keys(grid_refined.value)
-            grid_refined.value[key][i_ref+2, j_ref+1] = 0.5*(grid.vars[key][i+1,j]+grid.vars[key][i+1,j+1])
+        for key in keys(grid_refined.vars)
+            grid_refined.vars[key][i_ref+2, j_ref+1] = 0.5*(grid.vars[key][i+1,j]+grid.vars[key][i+1,j+1])
         end
         grid_refined.ref_level[i_ref+2, j_ref+1] = min(grid.ref_level[i+1,j], grid.ref_level[i+1,j+1])
         grid_refined.status[i_ref+2, j_ref+1] = 0
         n_inter
     end
     if grid_refined.status[i_ref+1, j_ref+1] == -1 
-        for key in keys(grid_refined.value)
-            grid_refined.value[key][i_ref+1, j_ref+1] = 0.25*(grid.vars[key][i,j]+grid.vars[key][i+1,j]+grid.vars[key][i,j+1]+grid.vars[key][i+1,j+1])
+        for key in keys(grid_refined.vars)
+            grid_refined.vars[key][i_ref+1, j_ref+1] = 0.25*(grid.vars[key][i,j]+grid.vars[key][i+1,j]+grid.vars[key][i,j+1]+grid.vars[key][i+1,j+1])
         end
         grid_refined.ref_level[i_ref+1, j_ref+1] = min(grid.ref_level[i,j], grid.ref_level[i+1,j], grid.ref_level[i,j+1], grid.ref_level[i+1,j+1])
         grid_refined.status[i_ref+1, j_ref+1] = 0
@@ -474,7 +474,7 @@ function parallel_precalculate_2DGrid(grid::Refinement2DGrid, target_function, p
                         break
                     end
 #                    println("myid = $(myid()), p = $p, idx = $idx")
-                    target_output = remotecall_fetch(target_function, p, grid.x[idx[1]], grid.y[idx[2]])
+                    target_output = remotecall_fetch(target_function, p, grid.x.values[idx[1]], grid.y.values[idx[2]])
                     put!(channel, true)
                     for (key, value) in pairs(target_output)
                         grid.vars[key][idx[1], idx[2]] = value
@@ -497,14 +497,14 @@ end
 #=
 function pmap_parallel_precalculate_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
 
-    target_keys, target_values = target_function(grid.x[1], grid.y[1], only_keys = true)
+    target_keys, target_values = target_function(grid.x.values[1], grid.y.values[1], only_keys = true)
     for (i_key, key) in enumerate(target_keys)
         grid.vars[key] = fill(-1, grid.x.N, grid.y.N)
     end
 
     function separate_task(idx::Tuple{Int64,Int64})
         i, j = idx
-        calc_keys, calc_values = target_function(grid.x[i], grid.y[j])
+        calc_keys, calc_values = target_function(grid.x.values[i], grid.y.values[j])
         for (i_key, key) in enumerate(calc_keys)
             grid.vars[key][i, j] = calc_values[i_key]
         end
@@ -614,10 +614,10 @@ function calculate_cell!(p, i_cell::Int64, j_cell::Int64, grid::Refinement2DGrid
     for i_ref in i_cell_ref:i_cell_ref+2, j_ref in j_cell_ref:j_cell_ref+2
         if grid_refined.status[i_ref,j_ref] < 1
             is_on_grid = (mod(i_ref,2)*mod(j_ref,2) == 1) 
-            target_output = remotecall_fetch(target_function, p, grid_refined.x[i_ref], grid_refined.y[j_ref])
+            target_output = remotecall_fetch(target_function, p, grid_refined.x.values[i_ref], grid_refined.y.values[j_ref])
             n_calc += 1
             for (key, value) in pairs(target_output)
-                grid_refined.value[key][i_ref, j_ref] = value
+                grid_refined.vars[key][i_ref, j_ref] = value
                 if !isnan(value)
                     grid_refined.min[key] = value < grid_refined.min[key] ? value : grid_refined.min[key]
                     grid_refined.max[key] = value > grid_refined.max[key] ? value : grid_refined.max[key]
