@@ -18,7 +18,7 @@ include("Refinement2DGrid.jl")
 #include("PhysicalFramework.jl")
 #include("PKFramework.jl")
 #include("ObsParams.jl")
-#include("TempoFramework.jl")
+include("TempoFramework.jl")
 #include("EOSAgnosticFramework.jl")
 
 #Base.Float64(m::Measurement{Float64}) = Float64(m.val)
@@ -36,6 +36,7 @@ include("Refinement2DGrid.jl")
 
 export LinRule, LogRule, RangeVariable, ValueVariable, Variable, Var, GeneralTest
 export FullUnit, DiffUnit, ContourUnit, DiffContourUnit, RefinementSettings, Refinement2DGrid, precalculate_2DGrid, refine_2DGrid, calculate_2DGrid
+export TempoParameter, TP, TempoParFile, read_par_file, write_par_file, TempoSettings, TempoFramework, calculate!
 
 
 

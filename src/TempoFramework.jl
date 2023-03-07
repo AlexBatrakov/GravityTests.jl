@@ -1,3 +1,6 @@
+#--------------------------------------------------------------------------------------------------------------
+# tempo parameters
+
 mutable struct TempoParameter{T1, T2, T3}
     name::String
     name_symbol::Symbol
@@ -44,6 +47,8 @@ function TempoParameter(name, value, flag=nothing, uncertainty=nothing)
     return tparam
 end
 
+TempoParameter(var::ValueVariable) = TempoParameter(var.name, var.value)
+
 function Base.show(io::IO, tparam::TempoParameter)
     indent = get(io, :indent, 0)
     print(io, " "^indent, tparam.name)
@@ -56,7 +61,6 @@ function Base.show(io::IO, tparam::TempoParameter)
     end
 	return nothing
 end
-
 
 function update_tparam_line!(tparam::TempoParameter)
     n_name = 20
@@ -98,6 +102,8 @@ end
 #TempoParameter(name::String, value::T, flag::Int64=-1, uncertainty::Float64=0.0) where {T} = TempoParameter{T}(name, Symbol(name), value, flag, uncertainty)
 #TempoParameter(name_symbol::Symbol, value::T, flag::Int64=-1, uncertainty::Float64=0.0) where {T} = TempoParameter{T}(String(name), name_symbol, value, flag, uncertainty)
 
+#--------------------------------------------------------------------------------------------------------------
+# tempo par files
 
 mutable struct TempoParFile
     name::String
@@ -123,21 +129,32 @@ function read_par_file(par_file::TempoParFile)
     par_file.order = Vector{Symbol}()
     open(par_file.name, "r") do file_in
         for line in eachline(file_in)
+            if startswith(line, "C ") || startswith(line, "c ")
+                continue
+            end
             tparam = TempoParameter(line)
             par_file.tparams[tparam.name_symbol] = tparam
             push!(par_file.order, tparam.name_symbol)
         end
     end
+    return par_file
 end
 
 function write_par_file(par_file::TempoParFile, name_out=par_file.name)
     open(name_out, "w") do file_out
         for name_symbol in par_file.order
             tparam = par_file.tparams[name_symbol]
-            println(file_out, tparam)
+            println(file_out, tparam.line)
         end
     end
+    return par_file
 end
+
+function update_par_file(par_file::TempoParFile, tparam::TempoParameter)
+    return par_file
+end
+
+function update_par_file()
 
 #=
 struct TempoIteration
@@ -161,9 +178,13 @@ function Base.show(io::IO, iter::TempoIteration)
 end
 =#
 
+#--------------------------------------------------------------------------------------------------------------
+# tempo settings
+
 struct TempoSettings
     version::String
     par_file_init::String
+    par_file_work::String
     tim_file::String
     add_flag::String
     fit_XPBDOT::Bool
@@ -171,16 +192,18 @@ struct TempoSettings
 end
 
 function Base.show(io::IO, tsets::TempoSettings)
-    println(io, "Tempo settings:")
-    println(io, "   Version: ", tsets.version)
-    println(io, "   Initial par file: ", tsets.par_file_init)
-    println(io, "   Working tim file: ", tsets.tim_file)
-    println(io, "   Selected additional flags: ", tsets.add_flag)
-    println(io, "   Fit PBDOT to GR value: ", tsets.fit_XPBDOT)
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "Tempo settings:")
+    println(io, ' '^(indent + 4), "Version: ", tsets.version)
+    println(io, ' '^(indent + 4), "Initial par file: ", tsets.par_file_init)
+    println(io, ' '^(indent + 4), "Working par file: ", tsets.par_file_work)
+    println(io, ' '^(indent + 4), "Working tim file: ", tsets.tim_file)
+    println(io, ' '^(indent + 4), "Selected additional flags: ", tsets.add_flag)
+    println(io, ' '^(indent + 4), "Fit PBDOT to GR value: ", tsets.fit_XPBDOT)
     for (i,iter) in enumerate(tsets.iters)
-        println(io, "   Tempo parameters in iteration #$i:")
+        println(io, ' '^(indent + 4), "Tempo parameters in iteration #$i:")
         for (j, tparam) in enumerate(iter)
-            print(io, "      $tparam")
+            print(io, ' '^(indent + 8), "$tparam")
             if i != length(tsets.iters) || j != length(iter)
                 print("\n")
             end
@@ -189,24 +212,76 @@ function Base.show(io::IO, tsets::TempoSettings)
 	return nothing
 end
 
-TempoSettings(;version, par_file_init, tim_file, add_flag, fit_XPBDOT, iters=Vector{Vector{TempoParameter}}()) = TempoSettings(version, par_file_init, tim_file, add_flag, fit_XPBDOT, iters)
+TempoSettings(;version, par_file_init, par_file_work=par_file_init[1:end-4]*"_work.par", tim_file, add_flag, fit_XPBDOT, iters=Vector{Vector{TempoParameter}}()) = TempoSettings(version, par_file_init, par_file_work, tim_file, add_flag, fit_XPBDOT, iters)
 
-TempoSettings(args... ;version, par_file_init, tim_file, add_flag, fit_XPBDOT) = TempoSettings(version, par_file_init, tim_file, add_flag, fit_XPBDOT, collect(args))
+TempoSettings(args... ;version, par_file_init, par_file_work=par_file_init[1:end-4]*"_work.par", tim_file, add_flag, fit_XPBDOT) = TempoSettings(version, par_file_init, par_file_work, tim_file, add_flag, fit_XPBDOT, collect(args))
+
+#--------------------------------------------------------------------------------------------------------------
+# tempo framework
 
 
-mutable struct TempoFramework{T <: AbstractGravityTest}
+mutable struct TempoFramework{T <: AbstractTest}
     test::T
     tsets::TempoSettings
     grid::Refinement2DGrid
 end
 
+function TempoFramework(test::T, tsets::TempoSettings, ref_sets::RefinementSettings) where {T <: AbstractTest}
+    grid = Refinement2DGrid(test.rparams[1], test.rparams[2], ref_sets)
+    return TempoFramework(test, tsets, grid)
+end
+
 function Base.show(io::IO, tf::TempoFramework)
-    println(io, "Tempo framework:")
-    println(io, "    ", tf.test)
-    println(io, "    ", tf.tsets)
-    print(io,   "    ", tf.gsets)
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "Tempo framework:")
+    println(IOContext(io, :indent => indent+4), tf.test)
+    println(IOContext(io, :indent => indent+4),  tf.tsets)
+    print(IOContext(io, :indent => indent+4),  tf.grid)
 	return nothing
 end
+
+function calculate!(tf::TempoFramework)
+    work_dir = pwd()
+    for p in 1:nprocs()
+        rm("./worker$p", force=true, recursive=true)
+        mkdir("./worker$p")
+        cp(tf.tsets.par_file_init, "$(work_dir)/worker$p/$(tf.tsets.par_file_init)", force=true)
+        cp(tf.tsets.par_file_init, "$(work_dir)/worker$p/$(tf.tsets.par_file_work)", force=true)
+        cp(tf.tsets.tim_file,      "$(work_dir)/worker$p/$(tf.tsets.tim_file)",      force=true)
+    end
+    
+    function target_function(x, y, tf=tf)
+        p = myid()
+        cd("$(work_dir)/worker$p")
+        par_file_work = TempoParFile("./$(tf.tsets.par_file_init)")
+        
+        read_par_file(par_file)
+        modified_tparams = Vector{TempoParameter}()
+        for vparam in tf.test.vparams
+            push!(modified_tparams, TempoParameter(vparam))
+        end
+
+
+        write_par_file(par_file, tf.tsets.par_file_work)
+#        run_tempo(par_file_work, tim_file; silent=silent, add_flag=add_flag)
+
+        return (chisqr=x+y, sas=tf.test.rparams[1].values[4])
+    end
+
+    function params_function!(grid::Refinement2DGrid)
+
+    end
+
+    calculate_2DGrid!(tf.grid, target_function, params_function!)
+    return tf
+end
+
+
+#--------------------------------------------------------------------------------------------------------------
+#debug line
+#=
+
+
 
 #Base.copy(tf::TempoFramework) = TempoFramework(tf.test, tf.tsets, tf.gsets, tf.grid)
 
@@ -217,7 +292,7 @@ function TempoFramework(test::GeneralTest, obs_params::ObsParams, gsets::GridSet
     return PKFramework(test, obs_params, gsets, grid)
 end
 
-TempoFramework(;test::T, tsets::TempoSettings, gsets::GridSetttings) where {T <: AbstractGravityTest} = TempoFramework{T}(test, tsets, gsets)
+TempoFramework(;test::T, tsets::TempoSettings, gsets::GridSetttings) where {T <: AbstractTest} = TempoFramework{T}(test, tsets, gsets)
 
 function TempoFramework(test::GeneralTest, tsets::TempoSettings, gsets::GridSetttings)
     param1_grid = collect(LinRange(test.param1.min, test.param1.max, test.param1.N))
@@ -403,121 +478,6 @@ function get_tempo_format(name, value)
         return name => value
     end
 end
-
-#=
-function calculate_old!(tf::TempoFramework; add_refinement=0)
-
-    par_file_init = tf.tsets.par_file_init
-    par_file_work = "$(par_file_init[1:end-4])_work.par"
-    par_file_out = "$(tf.test.psrname).par"
-    tim_file = tf.tsets.tim_file
-    add_flag = tf.tsets.add_flag
-    fit_XPBDOT = tf.tsets.fit_XPBDOT
-
-    println("Obtaining a working parfile with fit_XPBDOT=$fit_XPBDOT")
-    tf.grid.params[:chisqr_gr] = get_par_file_work(par_file_init, par_file_out, tim_file; add_flag=add_flag, fit_XPBDOT=fit_XPBDOT)
-    tf.grid.params[:chisqr_min] = tf.gsets.gr_in_chisqr ? tf.grid.params[:chisqr_gr] : Inf
-
-    modified_params = Dict()
-    if typeof(tf.test.alpha0) == Float64
-        push!(modified_params, get_tempo_format("alpha0", tf.test.alpha0))
-    end
-    if typeof(tf.test.beta0) == Float64
-        push!(modified_params, get_tempo_format("beta0", tf.test.beta0))
-    end
-    
-    function get_ddstg_values_local(param1, param2; silent=true)
-        push!(modified_params, get_tempo_format(tf.test.param1.name, param1))
-        push!(modified_params, get_tempo_format(tf.test.param2.name, param2))
-        modified_params["EOS"] = tf.test.eosname
-        modified_params["NITS"] = tf.tsets.nits
-        modified_params["GAIN"] = 1.0
-        modify_par_file(modified_params, par_file_work)
-        chisqr = Inf
-        if tf.tsets.all_conv == false
-            chisqr = run_tempo(par_file_work, tim_file; silent=silent, add_flag=add_flag)
-        end
-        if isinf(chisqr) || tf.tsets.all_conv == true
-            if tf.tsets.all_conv == false
-                println("The first attempt failed. Reajustment of parameters.")
-            end
-            modified_params["NITS"] = tf.tsets.nits_conv
-            modified_params["GAIN"] = tf.tsets.gain_conv
-            modify_par_file(modified_params, par_file_work)
-            chisqr = run_tempo(par_file_work, tim_file; silent=true, add_flag="-c "*add_flag)
-            if !isinf(chisqr) && tf.tsets.nits != 0
-                modified_params["NITS"] = tf.tsets.nits
-                modified_params["GAIN"] = 1.0
-                modify_par_file(modified_params, par_file_out)
-                chisqr = run_tempo(par_file_out, tim_file; silent=true, add_flag=add_flag)
-            end
-        end
-        tf.grid.params[:chisqr_min] = tf.grid.params[:chisqr_min] < chisqr ? tf.grid.params[:chisqr_min] : chisqr
-        @printf "%s = %10.6f, %s = %10.6f, χ2 = %8.3f, Δχ2 = %8.3f\n" tf.test.param1.name param1 tf.test.param2.name param2 chisqr chisqr-tf.grid.params[:chisqr_min]
-#        temp_dict = read_params(Dict(:A1=>0.0, :E=>0.0, :T0=>0.0, :PB=>0.0, :OM=>0.0, :OMDOT=>0.0, :GAMMA=>0.0, :PBDOT=>0.0, :SINI=>0.0, :DTHETA=>0.0, :XDOT=>0.0, :DR=>0.0,:MA=>0.0, :MB =>0.0, :ALPHA0=>0.0, :BETA0=>0.0, :ALPHAA=>0.0, :BETAA=>0.0, :kA=>0.0), par_file_out)
-        temp_dict = read_params(Dict(:A1=>0.0, :E=>0.0, :T0=>0.0, :PB=>0.0, :OM=>0.0, :OMDOT=>0.0, :GAMMA=>0.0, :PBDOT=>0.0, :SINI=>0.0, :H3 => 0.0, :VARSIGMA => 0.0, :DTHETA=>0.0, :XDOT=>0.0, :XPBDOT=>0.0, :DR=>0.0, :MTOT=>0.0, :M2 =>0.0, :ALPHA0=>0.0, :BETA0=>0.0, :ALPHAA=>0.0, :BETAA=>0.0, :kA=>0.0), par_file_out)
-        ddstg_names = tuple(:chisqr, keys(temp_dict)...)
-        ddstg_values = tuple(chisqr, values(temp_dict)...)
-        return (ddstg_names, ddstg_values)
-    end
-
-    chisqr_contours = tf.gsets.contours
-    delta_chisqr_max = tf.gsets.delta_chisqr_max
-    delta_chisqr_diff = tf.gsets.delta_chisqr_diff
-
-    function niceplot_cell_selector(i_cell::Int64, j_cell::Int64, grid::SimpleGrid)
-        chisqr_min = grid.params[:chisqr_min]
-        chisqr_cell = @view grid.value[:chisqr][i_cell:i_cell+1,j_cell:j_cell+1]
-        chisqr_cell_min = minimum(chisqr_cell)
-        chisqr_cell_max = maximum(chisqr_cell)
-        max_chisqr_case = (chisqr_cell_min < chisqr_min + delta_chisqr_max)
-        diff_chisqr_case = (chisqr_cell_max - chisqr_cell_min > delta_chisqr_diff)
-        contour_chisqr_case = any(chisqr_cell_min .< chisqr_min .+ chisqr_contours .< chisqr_cell_max)
-        return max_chisqr_case && diff_chisqr_case || contour_chisqr_case
-    end
-
-    function contour_cell_selector(i_cell::Int64, j_cell::Int64, grid::SimpleGrid)
-        chisqr_min = grid.params[:chisqr_min]
-        chisqr_cell = @view grid.value[:chisqr][i_cell:i_cell+1,j_cell:j_cell+1]
-        chisqr_cell_min = minimum(chisqr_cell)
-        chisqr_cell_max = maximum(chisqr_cell)
-#        min_chisqr_case = chisqr_cell_min <= chisqr_min < chisqr_cell_max
-        contour_chisqr_case = any(chisqr_cell_min .< chisqr_min .+ chisqr_contours .< chisqr_cell_max)
-        return contour_chisqr_case
-    end
-
-    if tf.gsets.refinement_type == "nice"
-        sell_selector = niceplot_cell_selector
-    elseif tf.gsets.refinement_type == "contour"
-        sell_selector = contour_cell_selector
-    end
-
-    function calculate_params!(grid::SimpleGrid)
-        if haskey(grid.params, :chisqr_min)
-            grid.params[:chisqr_min] = min(minimum(grid.value[:chisqr]), grid.params[:chisqr_min])
-        else
-            grid.params[:chisqr_min] = minimum(grid.value[:chisqr])
-        end
-        return nothing
-    end
-
-    if add_refinement == 0
-        precalculate_Grid(tf.grid, get_ddstg_values_local, calculate_params!)
-        for i in 1:tf.gsets.N_refinement
-            tf.grid = refine_Grid(tf.grid, get_ddstg_values_local, sell_selector, calculate_params!)
-        end
-    else
-        for i in 1:add_refinement
-            tf.grid = refine_Grid(tf.grid, get_ddstg_values_local, sell_selector, calculate_params!)
-        end
-        tf.gsets = GridSetttings(tf.gsets.N_refinement + add_refinement, tf.gsets.CL, tf.gsets.contours, tf.gsets.refinement_type, tf.gsets.delta_chisqr_max, tf.gsets.delta_chisqr_diff, tf.gsets.gr_in_chisqr)
-    end
-
-    cut_ddstg_grid!(tf.grid)
-    return tf
-end
-=#
-
 
 function print_tparam(line::String, tparam::TempoParameter)
     flag_string = tparam.flag == -1 ? " " : "$(tparam.flag)"
@@ -889,3 +849,5 @@ function calculate!(tf::TempoFramework; add_refinement=0)
 
     return tf
 end
+
+=#

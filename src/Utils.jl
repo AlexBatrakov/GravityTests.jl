@@ -132,15 +132,17 @@ function GeneralTest(args...)
 end
 
 function Base.show(io::IO, test::GeneralTest)
-    println(io, "General test:")
-    println(io, "    Ranged parameters:")
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "General test:")
+    println(io, ' '^(indent + 4), "Ranged parameters:")
     for rparam in test.rparams
-        println(io, "        ", rparam)
+        println(IOContext(io, :indent => indent+8), rparam)
     end
-    println(io, "    Valued parameters:")
-    for vparam in test.vparams
-        println(io, "        ", vparam)
+    println(io, ' '^(indent + 4), "Valued parameters:")
+    for i in 1:length(test.vparams)-1
+        println(IOContext(io, :indent => indent+8), test.vparams[i])
     end
+    print(IOContext(io, :indent => indent+8), test.vparams[end])
 	return nothing
 end
 

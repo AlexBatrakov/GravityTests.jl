@@ -14,9 +14,9 @@ FullUnit(name; min = -Inf, max = Inf) = FullUnit(name, min, max)
 function Base.show(io::IO, ru::FullUnit)
     indent = get(io, :indent, 0)
     println(io, ' '^indent, "Full refinement unit:")
-    println(io, ' '^indent, "   Name of variable: ", ru.name)
-    println(io, ' '^indent, "   Minimum value: ", ru.min)
-    print(io,   ' '^indent, "   Maximum value: ", ru.max)
+    println(io, ' '^(indent+4), "Name of variable: ", ru.name)
+    println(io, ' '^(indent+4), "Minimum value: ", ru.min)
+    print(io,   ' '^(indent+4), "Maximum value: ", ru.max)
 	return nothing
 end
 
@@ -32,10 +32,10 @@ DiffUnit(name; min = -Inf, max = Inf, diff = diff) = DiffUnit(name, min, max, di
 function Base.show(io::IO, ru::DiffUnit)
     indent = get(io, :indent, 0)
     println(io, ' '^indent, "Difference refinement unit:")
-    println(io, ' '^indent, "    Name of variable: ", ru.name)
-    println(io, ' '^indent, "    Minimum value: ", ru.min)
-    println(io, ' '^indent, "    Maximum value: ", ru.max)
-    print(io,   ' '^indent, "    Maximal difference: ", ru.diff)
+    println(io, ' '^(indent+4), "Name of variable: ", ru.name)
+    println(io, ' '^(indent+4), "Minimum value: ", ru.min)
+    println(io, ' '^(indent+4), "Maximum value: ", ru.max)
+    print(io,   ' '^(indent+4), "Maximal difference: ", ru.diff)
 	return nothing
 end
 
@@ -51,10 +51,10 @@ ContourUnit(name; min = -Inf, max = Inf, contours = contours) = ContourUnit(name
 function Base.show(io::IO, ru::ContourUnit)
     indent = get(io, :indent, 0)
     println(io, ' '^indent, "Contour refinement unit:")
-    println(io, ' '^indent, "    Name of variable: ", ru.name)
-    println(io, ' '^indent, "    Minimum value: ", ru.min)
-    println(io, ' '^indent, "    Maximum value: ", ru.max)
-    print(io,   ' '^indent, "    Contour levels: ", ru.contours)
+    println(io, ' '^(indent+4), "Name of variable: ", ru.name)
+    println(io, ' '^(indent+4), "Minimum value: ", ru.min)
+    println(io, ' '^(indent+4), "Maximum value: ", ru.max)
+    print(io,   ' '^(indent+4), "Contour levels: ", ru.contours)
 	return nothing
 end
 
@@ -70,12 +70,12 @@ DiffContourUnit(name; min = -Inf, max = Inf, diff = diff, contours = contours) =
 
 function Base.show(io::IO, ru::DiffContourUnit)
     indent = get(io, :indent, 0)
-    println(io, ' '^indent, "Diffeerence and contour refinement unit:")
-    println(io, ' '^indent, "   Name of variable: ", ru.name)
-    println(io, ' '^indent, "   Minimum value: ", ru.min)
-    println(io, ' '^indent, "   Maximum value: ", ru.max)
-    println(io, ' '^indent, "   Maximal difference: ", ru.diff)
-    print(io,   ' '^indent, "   Contour levels: ", ru.contours)
+    println(io, ' '^indent, "Difference and contour refinement unit:")
+    println(io, ' '^(indent+4), "Name of variable: ", ru.name)
+    println(io, ' '^(indent+4), "Minimum value: ", ru.min)
+    println(io, ' '^(indent+4), "Maximum value: ", ru.max)
+    println(io, ' '^(indent+4), "Maximal difference: ", ru.diff)
+    print(io,   ' '^(indent+4), "Contour levels: ", ru.contours)
 	return nothing
 end
 
@@ -91,11 +91,12 @@ end
 function Base.show(io::IO, ref_sets::RefinementSettings{T}) where {T}
     indent = get(io, :indent, 0)
     println(io, ' '^indent, "Grid Refinement settings:")
-	println(io, ' '^indent, "    Desired refinement level: ", ref_sets.desired_refinement_level)
-    println(io, ' '^indent, "    Parallel computation: ", ref_sets.parallel)
-    for unit in ref_sets.units
-        println(IOContext(io, :indent => indent+4), unit)
+	println(io, ' '^(indent+4), "Desired refinement level: ", ref_sets.desired_refinement_level)
+    println(io, ' '^(indent+4), "Parallel computation: ", ref_sets.parallel)
+    for i in 1:length(ref_sets.units)-1
+        println(IOContext(io, :indent => indent+4), ref_sets.units[i])
     end
+    print(IOContext(io, :indent => indent+4), ref_sets.units[end])
 	return nothing
 end
 
@@ -133,13 +134,13 @@ end
 function Base.show(io::IO, grid::Refinement2DGrid)
     indent = get(io, :indent, 0)
     println(io, ' '^indent, "Refinement2DGrid:")
-	println(io, ' '^indent, "    Variables: ", keys(grid.vars))
-    println(io, ' '^indent, "    Parameters: ", grid.params)
-    println(io, ' '^indent, "    Minimal values: ", grid.min)
-    println(io, ' '^indent, "    Maximal values: ", grid.max)
-    println(io, ' '^indent, "    X axis: ", grid.x)
-    println(io, ' '^indent, "    Y axis: ", grid.y)
-    print(io, ' '^indent, grid.ref_sets)
+	println(io, ' '^(indent+4), "Variables: ", keys(grid.vars))
+    println(io, ' '^(indent+4), "Parameters: ", grid.params)
+    println(io, ' '^(indent+4), "Minimal values: ", grid.min)
+    println(io, ' '^(indent+4), "Maximal values: ", grid.max)
+    println(io, ' '^(indent+4), "X axis: ", grid.x)
+    println(io, ' '^(indent+4), "Y axis: ", grid.y)
+    print(IOContext(io, :indent => indent+4), grid.ref_sets)
 	return nothing
 end
 
@@ -252,19 +253,19 @@ end
 #--------------------------------------------------------------------------------------------------------------
 # General routines
 
-function calculate_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
-    precalculate_2DGrid(grid, target_function, params_function!)
+function calculate_2DGrid!(grid::Refinement2DGrid, target_function, params_function!)
+    precalculate_2DGrid!(grid, target_function, params_function!)
     for i in 1:grid.ref_sets.desired_refinement_level
         grid = refine_2DGrid(grid, target_function, params_function!)
     end
     return grid
 end
 
-function precalculate_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
+function precalculate_2DGrid!(grid::Refinement2DGrid, target_function, params_function!)
     if grid.ref_sets.parallel == true
-        return parallel_precalculate_2DGrid(grid, target_function, params_function!)
+        return parallel_precalculate_2DGrid!(grid, target_function, params_function!)
     else 
-        return single_core_precalculate_2DGrid(grid, target_function, params_function!)
+        return single_core_precalculate_2DGrid!(grid, target_function, params_function!)
     end
 end
 
@@ -279,7 +280,7 @@ end
 #--------------------------------------------------------------------------------------------------------------
 # Singe-core routines
 
-function single_core_precalculate_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
+function single_core_precalculate_2DGrid!(grid::Refinement2DGrid, target_function, params_function!)
     target_keys = Base.return_types(target_function, Tuple{Float64,Float64})[1].parameters[1]
     for key in target_keys
         grid.vars[key] = fill(-1, grid.x.N, grid.y.N)
@@ -436,7 +437,7 @@ end
 #--------------------------------------------------------------------------------------------------------------
 # Parallel routines
 
-function parallel_precalculate_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
+function parallel_precalculate_2DGrid!(grid::Refinement2DGrid, target_function, params_function!)
     np = nprocs()  # determine the number of processes available
     target_keys = Base.return_types(target_function, Tuple{Float64,Float64})[1].parameters[1]
     for key in target_keys
@@ -495,7 +496,7 @@ function parallel_precalculate_2DGrid(grid::Refinement2DGrid, target_function, p
 end
 
 #=
-function pmap_parallel_precalculate_2DGrid(grid::Refinement2DGrid, target_function, params_function!)
+function pmap_parallel_precalculate_2DGrid!(grid::Refinement2DGrid, target_function, params_function!)
 
     target_keys, target_values = target_function(grid.x.values[1], grid.y.values[1], only_keys = true)
     for (i_key, key) in enumerate(target_keys)
@@ -598,7 +599,6 @@ function parallel_refine_2DGrid(grid::Refinement2DGrid, target_function, params_
             interp_counter += interpolate_cell!(i_cell, j_cell, grid, grid_refined)
         end
     end
-
 
     println("iterations = $iterations_counter, calculations = $calc_counter, interpolations = $interp_counter")
     params_function!(grid)
