@@ -1,4 +1,4 @@
-module GravityTests
+module GravityTools
 
 #using StructureSolver
 #using DelimitedFiles
