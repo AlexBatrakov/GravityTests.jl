@@ -32,21 +32,41 @@ end
 #--------------------------------------------------------------------------------------------------------------
 # Test Framework
 
-struct TestFramework
-    params
-    kernels
-    data
+struct TestFramework{T1 <: TestParameters, T2 <: AbstractKernel, T3}
+    params::T1
+    kernels::Vector{T2}
+    data::T3
+end
+
+function TestFramework(params::T1, kernels::Vector{T2}, ref_sets::RefinementSettings) where {T1 <: TestParameters, T2 <: AbstractKernel}
+    if isempty(params.ext)
+        grid = Refinement2DGrid(params.x, params.y, ref_sets)
+        return TestFramework(params, kernels, grid)
+    end
 end
 
 function Base.show(io::IO, test::TestFramework)
     indent = get(io, :indent, 0)
     println(io, ' '^indent, "Test framework:")
     println(IOContext(io, :indent => indent+4), test.params)
-    println(io, ' '^indent, "Kernels:")
-    println(IOContext(io, :indent => indent+4), test.kernels)
-    println(io, ' '^indent, "Data:")
-    println(IOContext(io, :indent => indent+4), test.data)
+    println(io, ' '^(indent+4), "Kernels:")
+    print_array(IOContext(io, :indent => indent+8), test.kernels)
+    println(io, ' '^(indent+4), "Data:")
+    println(IOContext(io, :indent => indent+8), test.data)
 	return nothing
+end
+
+
+function calculate!(test::TestFramework)
+
+    function target_function(x,y)
+        
+    end
+
+    params_function!(grid) = nothing
+
+    calculate_2DGrid!(tf.grid, target_function, params_function!)
+    return tf
 end
 
 

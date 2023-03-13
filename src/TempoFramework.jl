@@ -218,6 +218,29 @@ TempoSettings(;version, par_file_init, par_file_work=par_file_init[1:end-4]*"_wo
 TempoSettings(args... ;version, par_file_init, par_file_work=par_file_init[1:end-4]*"_work.par", tim_file, add_flag, fit_XPBDOT) = TempoSettings(version, par_file_init, par_file_work, tim_file, add_flag, fit_XPBDOT, collect(args))
 
 #--------------------------------------------------------------------------------------------------------------
+# tempo kernel
+
+struct TempoKernel <: AbstractKernel
+    sets::TempoSettings
+    input::GeneralInput{TempoParameter, ValueVariable}
+    output::GeneralOutput{TempoParameter, ValueVariable}
+end
+
+TempoKernel(sets::TempoSettings) = TempoKernel(sets, GeneralInput{TempoParameter, ValueVariable}(), GeneralOutput{TempoParameter, ValueVariable}())
+
+function Base.show(io::IO, kernel::TempoKernel)
+    indent = get(io, :indent, 0)
+    println(io, ' '^indent, "Simple kernel:")
+    println(IOContext(io, :indent => indent+4), kernel.sets)
+    println(io, ' '^(indent+4), "Input:")
+    println(IOContext(io, :indent => indent+8), kernel.input)
+    println(io, ' '^(indent+4), "Output:")
+    println(IOContext(io, :indent => indent+8), kernel.output)
+	return nothing
+end
+
+
+#--------------------------------------------------------------------------------------------------------------
 # tempo framework
 
 
