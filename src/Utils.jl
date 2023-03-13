@@ -15,7 +15,6 @@ lvl_95CL = quantile(Chisq(2), 0.95)
 lvl_99CL = quantile(Chisq(2), 0.99)
 lvl_997CL = quantile(Chisq(2), 0.997)
 
-
 #--------------------------------------------------------------------------------------------------------------
 # Variables
 
@@ -108,45 +107,25 @@ end
 Var = Variable
 
 #--------------------------------------------------------------------------------------------------------------
-# Tests
-
-abstract type AbstractTest end
-
-struct GeneralTest <: AbstractTest
-    rparams::Vector{RangeVariable}
-    vparams::Vector{ValueVariable}
-end
-
-function GeneralTest(args...)
-    params = collect(args)
-    rparams = Vector{RangeVariable}()
-    vparams = Vector{ValueVariable}()
-    for param in params
-        if typeof(param) <: RangeVariable
-            push!(rparams, param)
-        elseif typeof(param) <: ValueVariable
-            push!(vparams, param)
+# Print utils
+function print_array(io, arr)
+    if length(arr) > 0
+        for i in 1:length(arr)-1
+            println(io, arr[i])
         end
+        print(io, arr[end])
+    else
+        print(io)
     end
-    return GeneralTest(rparams, vparams)
 end
 
-function Base.show(io::IO, test::GeneralTest)
+function print_array(io, arr::Vector{Float64})
     indent = get(io, :indent, 0)
-    println(io, ' '^indent, "General test:")
-    println(io, ' '^(indent + 4), "Ranged parameters:")
-    for rparam in test.rparams
-        println(IOContext(io, :indent => indent+8), rparam)
-    end
-    println(io, ' '^(indent + 4), "Valued parameters:")
-    for i in 1:length(test.vparams)-1
-        println(IOContext(io, :indent => indent+8), test.vparams[i])
-    end
-    print(IOContext(io, :indent => indent+8), test.vparams[end])
-	return nothing
+    print(io, ' '^indent, arr)
 end
 
 
+#--------------------------------------------------------------------------------------------------------------
 #=
 function read_param!(param, alpha0, log10alpha0, beta0)
     if param.name == "alpha0"
@@ -232,3 +211,4 @@ function get_label(name)
     end
 end
 =#
+

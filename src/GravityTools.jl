@@ -14,6 +14,8 @@ using Distributed
 using ProgressMeter
 
 include("Utils.jl")
+include("TestFramework.jl")
+include("KernelFramework.jl")
 include("Refinement2DGrid.jl")
 #include("PhysicalFramework.jl")
 #include("PKFramework.jl")
@@ -34,12 +36,16 @@ include("TempoFramework.jl")
 #export calculate_t2!
 #export EOSAgnosticTest
 
-export LinRule, LogRule, RangeVariable, ValueVariable, Variable, Var, GeneralTest
+export  lvl_1σ, lvl_2σ, lvl_3σ, lvl_4σ, lvl_5σ, lvl_6σ, lvl_7σ, lvl_68CL, lvl_90CL, lvl_95CL, lvl_99CL
+
+export LinRule, LogRule, RangeVariable, ValueVariable, Variable, Var
+export SimpleKernel
+export TestFramework, TestParameters
 export FullUnit, DiffUnit, ContourUnit, DiffContourUnit, RefinementSettings, Refinement2DGrid, precalculate_2DGrid, refine_2DGrid, calculate_2DGrid
 export TempoParameter, TP, TempoParFile, read_par_file, write_par_file, TempoSettings, TempoFramework, calculate!
 
 
 
-export G_CAV, M_sun, c, d, rad
-export  lvl_1σ, lvl_2σ, lvl_3σ, lvl_4σ, lvl_5σ, lvl_6σ, lvl_7σ, lvl_68CL, lvl_90CL, lvl_95CL, lvl_99CL
+#export G_CAV, M_sun, c, d, rad
+
 end # module
