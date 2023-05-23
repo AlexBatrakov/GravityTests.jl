@@ -4,7 +4,7 @@ module GravityTools
 #using DelimitedFiles
 using Distributions
 #using NLsolve
-#using Measurements
+using Measurements
 #using Optim
 #using StructArrays
 #using Printf
@@ -14,13 +14,19 @@ using Distributed
 using ProgressMeter
 
 include("Utils.jl")
-include("Refinement2DGrid.jl")
-include("KernelFramework.jl")
-include("TestFramework.jl")
+include("Frameworks.jl")
+include("Physics.jl")
+include("AstrophysicalObjects.jl")
+include("AstrophysicalFramework.jl")
+
+
+#include("Refinement2DGrid.jl")
+#include("KernelFramework.jl")G
+#include("TestFramework.jl")
 #include("PhysicalFramework.jl")
 #include("PKFramework.jl")
 #include("ObsParams.jl")
-include("TempoFramework.jl")
+#include("TempoFramework.jl")
 #include("EOSAgnosticFramework.jl")
 
 #Base.Float64(m::Measurement{Float64}) = Float64(m.val)
@@ -39,10 +45,10 @@ include("TempoFramework.jl")
 export  lvl_1σ, lvl_2σ, lvl_3σ, lvl_4σ, lvl_5σ, lvl_6σ, lvl_7σ, lvl_68CL, lvl_90CL, lvl_95CL, lvl_99CL
 
 export LinRule, LogRule, RangeVariable, ValueVariable, Variable, Var
-export FullUnit, DiffUnit, ContourUnit, DiffContourUnit, RefinementSettings, Refinement2DGrid, precalculate_2DGrid, refine_2DGrid, calculate_2DGrid
-export SimpleKernel
-export TestFramework, TestParameters
-export TempoParameter, TP, TempoParFile, read_par_file, write_par_file, TempoSettings, TempoFramework, calculate!, TempoKernel
+#export FullUnit, DiffUnit, ContourUnit, DiffContourUnit, RefinementSettings, Refinement2DGrid, precalculate_2DGrid, refine_2DGrid, calculate_2DGrid
+#export SimpleKernel
+#export TestFramework, TestParameters
+#export TempoParameter, TP, TempoParFile, read_par_file, write_par_file, TempoSettings, TempoFramework, calculate!, TempoKernel
 
 
 

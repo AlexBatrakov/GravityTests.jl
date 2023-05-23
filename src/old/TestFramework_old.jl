@@ -60,7 +60,7 @@ end
 function calculate!(test::TestFramework)
 
     function target_function(x,y)
-        
+
     end
 
     params_function!(grid) = nothing

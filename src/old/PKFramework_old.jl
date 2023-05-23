@@ -1,3 +1,6 @@
+#--------------------------------------------------------------------------------------------------------------
+# Binary parameters
+
 #K_list = (:Pb, :T0, :e0, :omega0, :x0)
 #PK_list = (:k, :gamma, :Pbdot, :r, :s, :h3, :varsigma, :dtheta)
 #X_list = (:m2, :q, :deltaN)
@@ -23,7 +26,10 @@ function Base.show(io::IO, params::ObsParams)
 	return nothing
 end
 
+#--------------------------------------------------------------------------------------------------------------
+# Post-keplerian framework
 
+#=
 mutable struct PKFramework{T <: AbstractGravityTest}
     test::T
     obs_params::ObsParams
@@ -48,6 +54,11 @@ function PKFramework(test::GeneralTest, obs_params::ObsParams, gsets::GridSettti
     grid = SimpleGrid(Dict(), param1_grid, param2_grid)
     return PKFramework(test, obs_params, gsets, grid)
 end
+
+=#
+
+#--------------------------------------------------------------------------------------------------------------
+# Post-keplerian framework subroutines
 
 function find_initial_masses(obs_params::ObsParams, pf::DEFPhysicalFramework)
     PK_first = :k
@@ -118,7 +129,7 @@ function check_terms_in_chisqr(obs_params::ObsParams, pf::DEFPhysicalFramework)
     end
 end
 
-function get_terms_in_chisqr(pkf::PKFramework, obs_params::ObsParams, pf::DEFPhysicalFramework)
+function get_terms_in_chisqr(obs_params::ObsParams, pf::DEFPhysicalFramework)
 
     for PK in keys(obs_params.PK)
         if obs_params.PK[PK].err != 0.0
@@ -327,6 +338,8 @@ function adjust_masses(params, pf::DEFPhysicalFramework)
     return pf
 end
 
+
+#=
 function calculate!(pkf::PKFramework, pf::DEFPhysicalFramework; add_refinement=0)
 
     pf.theory.alpha0 = 0.0
@@ -482,12 +495,13 @@ function calculate!(pkf::PKFramework, pf::DEFPhysicalFramework; add_refinement=0
 
     return pkf, pf
 end
+=#
 
-function parse_par_file(par_file::String)
-    pf = open(par_file, "r")
-    pf_lines = readlines(pf)
-    for line in pf_lines
-        if startswith(line, "PB")
-        end
-    end
+#--------------------------------------------------------------------------------------------------------------
+# PK kernel
+
+struct PKKernel <: AbstractKernel
+    physics::DEFPhysicalFramework
+    obs_params::ObsParams
+
 end

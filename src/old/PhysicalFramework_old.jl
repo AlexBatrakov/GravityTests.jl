@@ -1,30 +1,45 @@
+#--------------------------------------------------------------------------------------------------------------
+# Constants
+
 const G_CAV =  6.67408e-8
 const M_sun = 1.3271244e26 / G_CAV
 const c = 2.99792458e10
 const d = 3600*24
 const rad = 180/pi
 
-abstract type GravityTheory end
+#--------------------------------------------------------------------------------------------------------------
+# Gravity theories
 
-struct GR <: GravityTheory
+abstract type AbstractGravity end
+
+struct GeneralRelativity <: AbstractGravity
 end
 
-abstract type ScalarTensorGravity <: GravityTheory end
+const GR = GeneralRelativity
 
-mutable struct DEF <: ScalarTensorGravity
+abstract type ScalarTensorGravity <: AbstractGravity end
+
+const STG = ScalarTensorGravity
+
+mutable struct DamourEspositoFarese <: ScalarTensorGravity
 	alpha0::Float64
 	beta0::Float64
-    function DEF(alpha0, beta0)
+    function DamourEspositoFarese(alpha0, beta0)
         return new(alpha0, beta0)
     end
-    function DEF()
+    function DamourEspositoFarese()
         return new()
     end
 end
 
-struct DEFGrid
+const DEF = DamourEspositoFarese
+
+#--------------------------------------------------------------------------------------------------------------
+# Structs and routines for DEF gravity
+
+struct DEFGrids
     eosname::Symbol
-    dims::NTuple{N,Int64} where N
+    dims::NTuple{3,Int64}
     alpha0::Vector{Float64}
     beta0::Vector{Float64}
     alphaA::Array{Float64,3}
@@ -33,7 +48,7 @@ struct DEFGrid
     mA::Array{Float64,3}
 end
 
-function read_DEFGrid(eosname::Symbol, path_to_grids=".")
+function read_DEFGrids(eosname::Symbol, path_to_grids=".")
     path = path_to_grids * "/" * string(eosname) * "/"
     N_pc, N_alpha0, N_beta0 = readdlm(path*"dims.dat")[2,:]
     alpha0 = readdlm(path*"alpha0.dat")[:,1]
@@ -54,10 +69,10 @@ function read_DEFGrid(eosname::Symbol, path_to_grids=".")
             mA[:,i_alpha0,i_beta0] .= mA_temp[(i_alpha0-1)*N_beta0+i_beta0,3:end]
         end
     end
-    return DEFGrid(eosname, (N_pc, N_alpha0, N_beta0), alpha0, beta0, alphaA, betaA, kA, mA)
+    return DEFGrids(eosname, (N_pc, N_alpha0, N_beta0), alpha0, beta0, alphaA, betaA, kA, mA)
 end
 
-struct DEFMassGrid
+struct DEFMassGrids
     eosname::Symbol
     N_pc::Int64
     alpha0::Float64
@@ -68,13 +83,13 @@ struct DEFMassGrid
     mA::Vector{Float64}
     mAmax::Float64
     i_mAmax::Int64
-    function DEFMassGrid(eosname, N_pc, alpha0, beta0, alphaA, betaA, kA, mA)
+    function DEFMassGrids(eosname, N_pc, alpha0, beta0, alphaA, betaA, kA, mA)
         mAmax, i_mAmax = findmax(mA)
         return new(eosname, N_pc, alpha0, beta0, alphaA, betaA, kA, mA, mAmax, i_mAmax)
     end
 end
 
-function interpolate_DEFMassGrid(grid::DEFGrid, alpha0, beta0)
+function interpolate_DEFMassGrids(grid::DEFGrids, alpha0, beta0)
 
     if !(grid.alpha0[1] <= alpha0 <= grid.alpha0[end]) || !(grid.beta0[1] <= beta0 <= grid.beta0[end])
         error("interpolation for alpha0=$alpha0, beta0=$beta0 is out of possible range")
@@ -122,10 +137,10 @@ function interpolate_DEFMassGrid(grid::DEFGrid, alpha0, beta0)
             grid.mA[:, i_alpha0, i_beta0+1] * (1-x_alpha0) * x_beta0 +
             grid.mA[:, i_alpha0+1, i_beta0+1] * x_alpha0 * x_beta0
 
-    return DEFMassGrid(grid.eosname, grid.dims[1], alpha0, beta0, alphaA, betaA, kA, mA)
+    return DEFMassGrids(grid.eosname, grid.dims[1], alpha0, beta0, alphaA, betaA, kA, mA)
 end
 
-function interpolate_NS(mgrid::DEFMassGrid, mA)
+function interpolate_NS(mgrid::DEFMassGrids, mA)
 
 
 
@@ -146,6 +161,9 @@ function interpolate_NS(mgrid::DEFMassGrid, mA)
     kA = mgrid.kA[i_mA] * (1-x_mA) + mgrid.kA[i_mA+1] * x_mA
     return (alphaA = alphaA, betaA = betaA, kA = kA)
 end
+
+#--------------------------------------------------------------------------------------------------------------
+# Binary systems and objects
 
 K_list = (:Pb, :T0, :e0, :omega0, :x0)
 PK_list = (:k, :gamma, :Pbdot, :r, :s, :h3, :varsigma, :dtheta)
@@ -207,6 +225,9 @@ struct Settings
     path_to_grids::String
 end
 
+#--------------------------------------------------------------------------------------------------------------
+# Physical framework and routines
+
 abstract type PhysicalFramework end
 
 mutable struct GRPhysicalFramework <: PhysicalFramework
@@ -219,8 +240,11 @@ mutable struct DEFPhysicalFramework <: PhysicalFramework
     eosname::Symbol
     bnsys::BinarySystem
     sets::Settings
-    grid::DEFGrid
-    mgrid::DEFMassGrid
+    grid::DEFGrids
+    mgrid::DEFMassGrids
+    function DEFPhysicalFramework()
+        return new(DEF()) 
+    end
     function DEFPhysicalFramework(theory::DEF, eosname::Symbol, bnsys::BinarySystem)
         return new(theory, eosname, bnsys) 
     end
@@ -238,7 +262,7 @@ function Base.show(io::IO, pf::DEFPhysicalFramework)
 end
 
 function read_grid!(pf::DEFPhysicalFramework)
-    pf.grid = read_DEFGrid(pf.eosname, pf.sets.path_to_grids)
+    pf.grid = read_DEFGrids(pf.eosname, pf.sets.path_to_grids)
     return pf
 end
 
@@ -247,7 +271,7 @@ function interpolate_mgrid!(pf::DEFPhysicalFramework)
         println("No interpolation for the GR")
         return pf
     end
-    pf.mgrid = interpolate_DEFMassGrid(pf.grid, pf.theory.alpha0, pf.theory.beta0)
+    pf.mgrid = interpolate_DEFMassGrids(pf.grid, pf.theory.alpha0, pf.theory.beta0)
     return pf
 end
 
@@ -345,8 +369,6 @@ function calculate_X_params!(pf::DEFPhysicalFramework)
 	return pf
 end
 
-
-
 function interpolate_bnsys!(pf::DEFPhysicalFramework)
     interpolate_psr!(pf)
     interpolate_comp!(pf)
@@ -354,6 +376,3 @@ function interpolate_bnsys!(pf::DEFPhysicalFramework)
     calculate_X_params!(pf)
     return pf
 end
-
-#function calculate!(bnsys::BinarySystem)
-#end

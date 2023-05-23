@@ -3,7 +3,9 @@ using PyPlot
 
 using Distributed
 addprocs(4)
-@everywhere using GravityTests
+@everywhere using GravityTools
+
+cd("/Users/abatrakov/Documents/Work/PhD/projects/J2222-0137/work_data")
 
 test = GeneralTest(
     Var(name="EOS", value="MPA1"),
