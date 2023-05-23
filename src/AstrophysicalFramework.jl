@@ -16,12 +16,16 @@ struct AstrophysicalFramework{T1 <: Physics, T2 <: AbstractAstrophysicalObject} 
     function AstrophysicalFramework{T1, T2}(physics::T1, astrophysicalObject::T2) where {T1 <: Physics, T2 <: AbstractAstrophysicalObject}
         return new{T1, T2}(physics, astrophysicalObject)
     end
+
+#    function calculate!(self)
+#        calculate!(self.physics, self.stellarObject)
+#    end
 end
 
 # Outer constructor for AstrophysicalFramework
 function AstrophysicalFramework(physics::T1, astrophysicalObject::T2) where {T1 <: Physics, T2 <: AbstractAstrophysicalObject}
     # Initialize the astrophysical object based on the provided physics object
-    initialized_object = initialize_AstrophysicalObject(physics, astrophysicalObject)
+    initialized_object = initialize_AstrophysicalObject(typeof(physics.gravity), astrophysicalObject)
 
      # Create and return an AstrophysicalFramework object
     return AstrophysicalFramework{T1, typeof(initialized_object)}(physics, initialized_object)

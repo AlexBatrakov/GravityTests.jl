@@ -15,13 +15,15 @@
 # AstrophysicalObjects.jl serves as a crucial building block for constructing higher-level frameworks and simulations in the field of astrophysics. It provides a convenient and modular approach to representing, organizing, and working with astrophysical objects, contributing to the advancement of research and understanding in the realm of astrophysics.
 
 # Define abstract type for astrophysical objects
-abstract type AbstractAstrophysicalObject end
+abstract type AbstractAstrophysicalObject <: AbstractGravityToolsType end
+
+abstract type AbstractAstrophysicalObjectQuantities <: AbstractGravityToolsType end
 
 # Define abstract type for stellar objects, which is a subtype of AbstractAstrophysicalObject
 abstract type AbstractStellarObject <: AbstractAstrophysicalObject end
 
 # Define abstract type for stellar object quantities
-abstract type AbstractStellarObjectQuantities end
+abstract type AbstractStellarObjectQuantities <: AbstractAstrophysicalObjectQuantities end
 
 # Define specific quantities type for General Relativity
 mutable struct GRStellarObjectQuantities <: AbstractStellarObjectQuantities
@@ -47,7 +49,7 @@ StellarQuantities(gravity_type::Type{GeneralRelativity}) = GRStellarObjectQuanti
 StellarQuantities(gravity_type::Type{DEFGravity}) = DEFStellarObjectQuantities()
 
 # Define abstract type for double stellar object quantities
-abstract type AbstractDoubleStellarObjectQuantities end
+abstract type AbstractDoubleStellarObjectQuantities <: AbstractAstrophysicalObjectQuantities end 
 
 # Define specific double quantities type for DEFGravity
 mutable struct DEFDoubleStellarObjectQuantities <: AbstractDoubleStellarObjectQuantities
@@ -62,7 +64,7 @@ mutable struct DEFDoubleStellarObjectQuantities <: AbstractDoubleStellarObjectQu
 end
 
 # Define the StellarObject struct with a type, mass, and quantities
-mutable struct StellarObject{T <: Union{AbstractStellarObjectQuantities, Nothing}}
+mutable struct StellarObject{T <: Union{AbstractStellarObjectQuantities, Nothing}} <: AbstractStellarObject
     type::Symbol
     mass::Float64
     quantities::T  # Quantities field can hold T subtype or be empty (Nothing)
@@ -94,7 +96,7 @@ struct TripleSystem <: AbstractStellarSystem
 end
 
 # Define abstract type for PSR binary system parameters
-abstract type PSRBinarySystemParameters end
+abstract type PSRBinarySystemParameters <: AbstractAstrophysicalObjectQuantities end
 
 # Define specific parameters type for Keplerian parameters
 mutable struct KeplerianParameters{T <: Union{Float64, Measurement{Float64}}} <: PSRBinarySystemParameters
@@ -127,7 +129,7 @@ mutable struct ExtraBinaryParameters{T <: Union{Float64, Measurement{Float64}}} 
 end
 
 # Define the PSRBinarySystem struct with various parameters and objects
-mutable struct PSRBinarySystem{T1 <: AbstractStellarObject, T2 <: AbstractDoubleStellarObjectQuantities}
+mutable struct PSRBinarySystem{T1 <: AbstractStellarObject, T2 <: AbstractDoubleStellarObjectQuantities} <: AbstractStellarSystem
     comp_type::Symbol
     mp::Float64
     mc::Float64

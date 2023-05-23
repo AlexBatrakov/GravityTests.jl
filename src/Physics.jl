@@ -7,7 +7,7 @@
 # Overall, Physics.jl provides a powerful toolkit for researchers, scientists, and enthusiasts working in the field of astrophysics, enabling them to model and explore complex physical systems with ease and flexibility.
 
 # Define abstract type for gravity
-abstract type AbstractGravity end
+abstract type AbstractGravity <: AbstractGravityToolsType end
 
 # Define specific gravity type GeneralRelativity
 struct GeneralRelativity <: AbstractGravity
@@ -31,7 +31,7 @@ const DEF = DEFGravity
 
 
 # Define abstract type for EOS
-abstract type AbstractEOS end
+abstract type AbstractEOS <: AbstractGravityToolsType end
 
 # Define specific EOS type SimpleEOS
 mutable struct SimpleEOS <: AbstractEOS
@@ -45,13 +45,13 @@ mutable struct SimpleEOS <: AbstractEOS
 end
 
 # Define abstract type for physical kernel with gravity parameter
-abstract type AbstractPhysicalKernel{G <: AbstractGravity} end
+abstract type AbstractPhysicalKernel{G <: AbstractGravity} <: AbstractGravityToolsType end
 
 # Define specific type for structure solver kernel
 abstract type StructureSolverKernel{G} <: AbstractPhysicalKernel{G} end
 
 # Define abstract type for tabular kernel with gravity parameter
-abstract type AbstractTabularKernel{G} <: AbstractPhysicalKernel{G}end
+abstract type AbstractTabularKernel{G} <: AbstractPhysicalKernel{G} end
 
 # Define a parametric struct for tabular kernel with path_to_grids parameter
 struct TabularKernel{PathToGrids}
@@ -94,7 +94,7 @@ TabularKernel(::Type{GeneralRelativity}, kernel::Type{T}) where {T <: TabularKer
 TabularKernel(::Type{DEFGravity}, kernel::Type{T}) where {T <: TabularKernel} = DEFTabularKernel(path_to_grid(kernel))
 
 # Define the Physics struct with gravity, EOS, and kernel parameters
-struct Physics{G <: AbstractGravity, E <: AbstractEOS, K <: AbstractPhysicalKernel}
+struct Physics{G <: AbstractGravity, E <: AbstractEOS, K <: AbstractPhysicalKernel} <: AbstractGravityToolsType
     gravity::G
     eos::E
     kernel::K
@@ -104,3 +104,6 @@ end
 function Physics(gravity::AbstractGravity, eos::AbstractEOS, kernel::Type{T}) where {T <: TabularKernel}
     return Physics(gravity, eos, TabularKernel(typeof(gravity), kernel))
 end
+
+
+
