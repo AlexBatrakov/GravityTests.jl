@@ -18,17 +18,17 @@ include("Physics.jl")
 # Astrophysical Objects related methods and definitions
 include("AstrophysicalObjects.jl")
 
+export BinarySystem, PSRBinarySystem
+
 # Astrophysical Framework methods and definitions
 include("AstrophysicalFramework.jl")
 
 # Export important types, functions, and abstract types
-export DEF, GR, SimpleEOS, TabularKernel, Physics, StellarObject, AstrophysicalFramework, simulate!, calculate!, export_abstract_types
+export DEF, GR, SimpleEOS, TabularKernel, Physics, StellarObject, AstrophysicalFramework, simulate!, calculate!, update_framework!, input_parameters
 
 # Export abstract types separately
-export_abstract_types() = begin
-    export AbstractStellarObject, AbstractStellarObjectQuantities
-    export AbstractAstrophysicalObject, AbstractAstrophysicalObjectQuantities, AbstractDoubleStellarObjectQuantities
-end
+export AbstractStellarObject, AbstractStellarObjectQuantities
+export AbstractAstrophysicalObject, AbstractAstrophysicalObjectQuantities, AbstractDoubleStellarObjectQuantities
 
 # Mathematical constants and variables
 export lvl_1σ, lvl_2σ, lvl_3σ, lvl_4σ, lvl_5σ, lvl_6σ, lvl_7σ, lvl_68CL, lvl_90CL, lvl_95CL, lvl_99CL

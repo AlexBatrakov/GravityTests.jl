@@ -27,6 +27,8 @@ mutable struct DEFGravity <: AbstractGravity
     end
 end
 
+input_parameters(gravity::DEFGravity) = (:alpha0, :beta0)
+
 const DEF = DEFGravity
 
 
@@ -43,6 +45,8 @@ mutable struct SimpleEOS <: AbstractEOS
         return new()
     end
 end
+
+input_parameters(eos::SimpleEOS) = (:eos_name,)
 
 # Define abstract type for physical kernel with gravity parameter
 abstract type AbstractPhysicalKernel{G <: AbstractGravity} <: AbstractGravityToolsType end
@@ -63,6 +67,8 @@ TabularKernel(path_to_grid::String) = TabularKernel{Symbol(path_to_grid)}
 
 # Function to retrieve path_to_grids from a TabularKernel type
 path_to_grid(kernel::Type{T}) where {T <: TabularKernel}  = String(kernel.parameters[1])
+
+input_parameters(kernel::AbstractPhysicalKernel) = (:path_to_grids, )
 
 # Define specific tabular kernel type for GeneralRelativity
 mutable struct GRTabularKernel <: AbstractTabularKernel{GR}

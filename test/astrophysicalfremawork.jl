@@ -12,7 +12,16 @@ physics = Physics(gravity, eos, kernel)
 
 
 # Create an instance of the StellarObject struct with the specified type and mass
-stellarObject = StellarObject(:NS, 1.3)
+stellarObject = StellarObject()
 
 # Create an instance of the AstrophysicalFramework struct with the physics and stellarObject
 framework = AstrophysicalFramework(physics, stellarObject)
+
+inputpool = Dict(:type => :WD, :mass => 1.4, :alpha0 => -1e-4, :beta0 => -4.0, :eos_name => :MPA1)
+
+update_framework!(framework, inputpool)
+
+
+binarySystem = BinarySystem(StellarObject(), StellarObject(), nothing)
+
+framework = AstrophysicalFramework(physics, binarySystem)

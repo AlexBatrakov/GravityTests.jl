@@ -34,7 +34,7 @@ end
 
 # Function to initialize the astrophysical object based on the physics object
 function initialize_AstrophysicalObject(gravity_type::Type{<:AbstractGravity}, object::AbstractAstrophysicalObject)
-    if object isa StellarObject
+    if object isa AbstractStellarObject
         StellarObject(gravity_type, object)
     elseif object isa AbstractStellarSystem
         StellarSystem(gravity_type, object)
