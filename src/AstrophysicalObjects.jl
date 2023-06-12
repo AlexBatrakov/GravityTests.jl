@@ -40,7 +40,7 @@ mutable struct DEFStellarObjectQuantities <: AbstractStellarObjectQuantities
     betaA::Float64
     kA::Float64
     IA::Float64
-ends
+end
 
 DEFStellarObjectQuantities() = DEFStellarObjectQuantities(0.0, 0.0, 0.0 ,0.0)
 
