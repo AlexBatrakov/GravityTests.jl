@@ -25,6 +25,8 @@ include("AstrophysicalFramework.jl")
 
 # Export important types, functions, and abstract types
 export DEF, GR, SimpleEOS, TabularKernel, Physics, StellarObject, AstrophysicalFramework, simulate!, calculate!, update_framework!, input_parameters
+export get_inputpool
+
 
 # Export abstract types separately
 export AbstractStellarObject, AbstractStellarObjectQuantities

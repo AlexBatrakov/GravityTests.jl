@@ -28,8 +28,9 @@ abstract type AbstractStellarObjectQuantities <: AbstractAstrophysicalObjectQuan
 # Define specific quantities type for General Relativity
 mutable struct GRStellarObjectQuantities <: AbstractStellarObjectQuantities
     I::Float64
-    GRStellarObjectQuantities() = new()
 end
+
+GRStellarObjectQuantities() = GRStellarObjectQuantities(0.0)
 
 const GRQuantities = GRStellarObjectQuantities
 
@@ -39,14 +40,15 @@ mutable struct DEFStellarObjectQuantities <: AbstractStellarObjectQuantities
     betaA::Float64
     kA::Float64
     IA::Float64
-    DEFStellarObjectQuantities() = new()
-end
+ends
+
+DEFStellarObjectQuantities() = DEFStellarObjectQuantities(0.0, 0.0, 0.0 ,0.0)
 
 const DEFQuantities = DEFStellarObjectQuantities
 
 # Function to get the corresponding quantities type for a given gravity type
-StellarQuantities(gravity_type::Type{GeneralRelativity}) = GRStellarObjectQuantities()
-StellarQuantities(gravity_type::Type{DEFGravity}) = DEFStellarObjectQuantities()
+StellarObjectQuantities(gravity_type::Type{GeneralRelativity}) = GRStellarObjectQuantities()
+StellarObjectQuantities(gravity_type::Type{DEFGravity}) = DEFStellarObjectQuantities()
 
 # Define the StellarObject struct with a type, mass, and quantities
 mutable struct StellarObject{T <: Union{AbstractStellarObjectQuantities, Nothing}} <: AbstractStellarObject
@@ -62,18 +64,23 @@ StellarObject(type::Symbol=Symbol(""), mass::Float64=0.0; quantities::Union{Abst
 
 # Constructor for StellarObject with gravity-specific quantities
 function StellarObject(gravity_type::Type{<:AbstractGravity})
-    quantities = StellarQuantities(gravity_type)  # Get the quantities based on gravity type
+    quantities = StellarObjectQuantities(gravity_type)  # Get the quantities based on gravity type
     StellarObject(quantities = quantities)
 end
 
 # Function to initialize the StellarObject based on the gravity type
 function StellarObject(gravity_type::Type{<:AbstractGravity}, object::StellarObject)
-    quantities = StellarQuantities(gravity_type)
+    quantities = StellarObjectQuantities(gravity_type)
     StellarObject(object.type, object.mass, quantities=quantities)
 end
 
+# function initialize(gravity_type::Type{<:AbstractGravity}, object::StellarObject)
+#     quantities = StellarObjectQuantities(gravity_type)
+#     StellarObject(object.type, object.mass, quantities=quantities)
+# end
+
 function update_StellarObject!(gravity_type::Type{<:AbstractGravity}, stellarObject::StellarObject)
-    stellarObject.quantities = StellarQuantities(gravity_type)  # Get the quantities based on gravity type
+    stellarObject.quantities = StellarObjectQuantities(gravity_type)  # Get the quantities based on gravity type
 end
 
 # Define abstract type for stellar systems, which is a subtype of AbstractAstrophysicalObject
@@ -87,10 +94,10 @@ struct TripleSystem <: AbstractStellarSystem
 end
 
 # Define abstract type for PSR binary system parameters
-abstract type PSRBinarySystemParameters <: AbstractAstrophysicalObjectQuantities end
+abstract type BinarySystemParameters <: AbstractAstrophysicalObjectQuantities end
 
 # Define specific parameters type for Keplerian parameters
-mutable struct KeplerianParameters{T <: Union{Float64, Measurement{Float64}}} <: PSRBinarySystemParameters
+mutable struct KeplerianParameters{T <: Union{Float64, Measurement{Float64}}} <: BinarySystemParameters
     P0::T
     T0::T
     e0::T
@@ -101,7 +108,7 @@ end
 KeplerianParameters() = KeplerianParameters(zeros(Float64,5)...)
 
 # Define specific parameters type for Post-Keplerian parameters
-mutable struct PostKeplerianParameters{T <: Union{Float64, Measurement{Float64}}} <: PSRBinarySystemParameters
+mutable struct PostKeplerianParameters{T <: Union{Float64, Measurement{Float64}}} <: BinarySystemParameters
     k::T
     gamma::T
     Pbdot_GW::T
@@ -114,7 +121,7 @@ end
 PostKeplerianParameters() = PostKeplerianParameters(zeros(Float64,7)...)
 
 # Define specific parameters type for extra binary parameters
-mutable struct ExtraBinaryParameters{T <: Union{Float64, Measurement{Float64}}} <: PSRBinarySystemParameters
+mutable struct ExtraBinaryParameters{T <: Union{Float64, Measurement{Float64}}} <: BinarySystemParameters
     mc::T
     q::T
     omegadot::T
@@ -125,8 +132,8 @@ end
 
 ExtraBinaryParameters() = ExtraBinaryParameters(zeros(Float64, 6)...)
 
-# Define abstract type for double stellar object quantities
-abstract type AbstractDoubleStellarObjectQuantities <: AbstractAstrophysicalObjectQuantities end 
+# # Define abstract type for double stellar object quantities
+# abstract type AbstractDoubleStellarObjectQuantities <: AbstractAstrophysicalObjectQuantities end 
 
 # # Define specific double quantities type for DEFGravity
 # mutable struct DEFDoubleStellarSystemQuantities <: AbstractDoubleStellarObjectQuantities
@@ -169,21 +176,14 @@ abstract type AbstractDoubleStellarObjectQuantities <: AbstractAstrophysicalObje
 #     return PSRBinarySystem(comp_type, mp, mc, K_params, pulsar, companion, Obj_quantities, PK_params, X_params)
 # end
 
-mutable struct BinarySystemQuantities{T <: Union{Nothing, AbstractStellarObjectQuantities}} <: AbstractStellarSystemQuantities
-    K_params::KeplerianParameters{Float64}
-    PK_params::PostKeplerianParameters{Float64}
-    X_params::ExtraBinaryParameters{Float64}
-    SO_params::T
-end
+abstract type AbstractBinaryStellarObjectQuantities <: AbstractStellarObjectQuantities end
 
-abstract type BinaryStellarObjectQuantities <: AbstractStellarObjectQuantities end
-
-mutable struct GRBinaryStellarObjectQuantities
+mutable struct GRBinaryStellarObjectQuantities <: AbstractBinaryStellarObjectQuantities
     IA::Float64
     IB::Float64
 end
 
-mutable struct DEFBinaryStellarObjectQuantities
+mutable struct DEFBinaryStellarObjectQuantities <: AbstractBinaryStellarObjectQuantities
     alphaA::Float64
     betaA::Float64
     kA::Float64
@@ -197,31 +197,67 @@ end
 BinaryStellarObjectQuantities(gravity_type::Type{GeneralRelativity}) = GRBinaryStellarObjectQuantities(0.0, 0.0)
 BinaryStellarObjectQuantities(gravity_type::Type{DEFGravity}) = DEFBinaryStellarObjectQuantities(zeros(Float64,8)...)
 
+abstract type AbstractBinarySystemQuantities <: AbstractStellarSystemQuantities end
 
-# Define the BinarySystem struct with various parameters and objects
-mutable struct BinarySystem{T1 <: AbstractStellarObject, T2 <: Union{Nothing, AbstractStellarSystemQuantities}} <: AbstractStellarSystem
-    primary::T1
-    companion::T1
-    quantities::T2
+mutable struct BinarySystemQuantities{T <: Union{Nothing, AbstractBinaryStellarObjectQuantities}} <: AbstractBinarySystemQuantities
+    K_params::KeplerianParameters{Float64}
+    PK_params::PostKeplerianParameters{Float64}
+    X_params::ExtraBinaryParameters{Float64}
+    SO_params::T
+    function BinarySystemQuantities(K_params::KeplerianParameters{Float64} = KeplerianParameters(), PK_params::PostKeplerianParameters{Float64}=PostKeplerianParameters(), X_params::ExtraBinaryParameters{Float64}=ExtraBinaryParameters(), SO_params::T=nothing) where {T <: Union{Nothing, AbstractBinaryStellarObjectQuantities}}
+        new{T}(K_params, PK_params, X_params, SO_params)
+    end
 end
 
-property_mappings(obj::BinarySystem) = Dict{Symbol, Vector{Symbol}}(
+# Constructor for BinarySystem 
+
+
+# Constructor for BinarySystemQuantities with gravity-specific quantities
+function BinarySystemQuantities(gravity_type::Type{<:AbstractGravity})
+    K_params = KeplerianParameters()
+    PK_params = PostKeplerianParameters()
+    X_params = ExtraBinaryParameters()
+    SO_params = BinaryStellarObjectQuantities(gravity_type) # Get the quantities based on gravity type
+    BinarySystemQuantities(K_params, PK_params, X_params, SO_params)
+end
+
+
+
+# Constructor for BinarySystemQuantities with gravity-specific quantities
+function BinarySystemQuantities(gravity_type::Type{<:AbstractGravity}, quantities::BinarySystemQuantities)
+    SO_params = BinaryStellarObjectQuantities(gravity_type) # Get the quantities based on gravity type
+    BinarySystemQuantities(quantities.K_params, quantities.PK_params, quantities.X_params, SO_params)
+end
+
+
+# Define the BinarySystem struct with various parameters and objects
+mutable struct BinarySystem{T1 <: AbstractStellarObject, T2 <: Union{Nothing, AbstractBinaryStellarObjectQuantities}} <: AbstractStellarSystem
+    primary::T1
+    companion::T1
+    quantities::BinarySystemQuantities{T2}
+    function BinarySystem(primary::T1 = StellarObject(), companion::T1 = StellarObject(), quantities::BinarySystemQuantities{T2} = BinarySystemQuantities()) where {T1 <: AbstractStellarObject, T2 <: Union{Nothing, AbstractBinaryStellarObjectQuantities}}
+        return new{T1, T2}(primary, companion, quantities)
+    end
+end
+
+property_mappings(::BinarySystem) = Dict{Symbol, Vector{Symbol}}(
     :prim_type => [:primary, :type],
     :mp => [:primary, :mass],
     :comp_type => [:companion, :type],
     :mc => [:companion, :mass]
 )
 
+
 input_parameters(binarySystem::BinarySystem) = (:prim_type, :mp, :comp_type, :mc)
 
-# Constructor for BinarySystem 
-BinarySystem(primary::T1=StellarObject(), companion::T1=StellarObject(); quantities::Union{AbstractStellarObjectQuantities, Nothing}=nothing) where {T1 <: AbstractStellarObject} = BinarySystem(primary, companion, quantities)
+# # Constructor for BinarySystem 
+# BinarySystem(primary::T1=StellarObject(), companion::T1=StellarObject(); quantities::BinarySystemQuantities{T2}=BinarySystemQuantities()) where {T1 <: AbstractStellarObject, T2 <: Union{Nothing, AbstractBinaryStellarObjectQuantities}} = BinarySystem(primary, companion, quantities)
 
 # Constructor for BinarySystem with gravity-specific quantities
 function BinarySystem(gravity_type::Type{<:AbstractGravity})
     primary = StellarObject(gravity_type)
     companion = StellarObject(gravity_type)
-    quantities = nothing  # Get the quantities based on gravity type
+    quantities = BinarySystemQuantities(gravity_type)  # Get the quantities based on gravity type
     BinarySystem(primary, companion, quantities)
 end
 
@@ -229,9 +265,17 @@ end
 function BinarySystem(gravity_type::Type{<:AbstractGravity}, binarySystem::BinarySystem)
     primary = StellarObject(gravity_type, binarySystem.primary)
     companion = StellarObject(gravity_type, binarySystem.companion)
-    quantities = nothing
+    quantities = BinarySystemQuantities(gravity_type, binarySystem.quantities)
     BinarySystem(primary, companion, quantities)
 end
 
+
+StellarSystem(gravity_type::Type{<:AbstractGravity}, system::BinarySystem) = BinarySystem(gravity_type, system)
+
+
+# function initialize(gravity_type::Type{<:AbstractGravity}, object::StellarObject)
+#     quantities = StellarObjectQuantities(gravity_type)
+#     StellarObject(object.type, object.mass, quantities=quantities)
+# end
 
 

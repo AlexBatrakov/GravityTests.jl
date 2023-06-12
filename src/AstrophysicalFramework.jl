@@ -43,3 +43,17 @@ function initialize_AstrophysicalObject(gravity_type::Type{<:AbstractGravity}, o
     end
 end
 
+function initialize(gravity_type::Type{<:AbstractGravity}, object::AbstractGravityToolsType)
+    if isdefined(GravityTools, typeof(object).name.name)
+        return typeof(object).name.name
+    end
+end
+
+function calculate!(framework::AstrophysicalFramework)
+
+end
+
+function calculate!(inputpool, framework::AstrophysicalFramework)
+    update_framework!(framework, inputpool)
+
+end

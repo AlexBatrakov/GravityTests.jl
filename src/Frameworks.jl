@@ -37,12 +37,29 @@ function print_input_parameters(object, level::Int = 0)
     end
 end
 
+function get_inputpool(object::T) where {T <: AbstractGravityToolsType}
+    #println("get_inputpool is called for $(typeof(object))  ")
+    inputpool = Dict{Symbol,Any}()
+    for field in propertynames(object)
+        #println("field = $field")
+        value = try getproperty(object, field) catch nothing end
+
+        if propertynames(typeof(value)) != () && typeof(value) <: AbstractGravityToolsType
+            merge!(inputpool, get_inputpool(value))# Recursive call for nested structures
+        elseif field in input_parameters(object)
+            #println("$field in input_parameters")
+            inputpool[field] = value
+        end
+    end
+    return inputpool
+end
+
 function input_parameters(object::T) where {T <: AbstractGravityToolsType}
     paramspool = ()
-    for field in fieldnames(typeof(object))
+    for field in propertynames(object)
         value = isdefined(object, field) ? getfield(object, field) : nothing
 
-        if fieldnames(typeof(value)) != ()
+        if propertynames(typeof(value)) != ()
             paramspool = (paramspool..., input_parameters(value)...) # Recursive call for nested structures
         else
 
@@ -55,15 +72,15 @@ end
 input_parameters(object) = ()
 
 function update_object!(object, inputpool::Dict)
-#    println("object = $object")
-    for field in fieldnames(typeof(object))
-#        println("field = $field")
+    #println("object = $(typeof(object))")
+    for field in propertynames(object)
+        #println("field = $field")
         if haskey(inputpool, field) && field in input_parameters(object)
-#            println("setfield!")
-            setfield!(object, field, getindex(inputpool, field))
-        elseif isdefined(object, field) && input_parameters(getfield(object, field)) != ()
-#            println("update_object!")
-            update_object!(getfield(object, field), inputpool)
+            #println("setfield!")
+            setproperty!(object, field, getindex(inputpool, field))
+        elseif isdefined(object, field) && input_parameters(getproperty(object, field)) != ()
+            #println("update_object!")
+            update_object!(getproperty(object, field), inputpool)
         end
     end
     return object
@@ -125,9 +142,16 @@ function Base.setproperty!(obj::T, prop::Symbol, value) where {T<:AbstractGravit
         parent = obj
         for field in field_path[1:end-1]
             parent = getfield(parent, field)
-        end
+        end 
         setfield!(parent, field_path[end], value)
     else
         setfield!(obj, prop, value)
     end
+end
+
+function Base.propertynames(obj::T) where {T<:AbstractGravityToolsType}
+    mappings = property_mappings(obj)
+    existing_fields = fieldnames(T)
+    new_fields = keys(mappings)
+    return vcat(existing_fields..., new_fields...)
 end
