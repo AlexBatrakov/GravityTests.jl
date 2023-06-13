@@ -23,6 +23,13 @@ export BinarySystem, PSRBinarySystem
 # Astrophysical Framework methods and definitions
 include("AstrophysicalFramework.jl")
 
+include("TempoFramework.jl")
+
+export TempoParameter, get_TempoParameter, update_pf_theory!, modify_par_file, run_tempo, get_par_file_work, read_params
+
+#export FullUnit, DiffUnit, ContourUnit, DiffContourUnit, RefinementSettings, Refinement2DGrid, precalculate_2DGrid, refine_2DGrid, calculate_2DGrid
+
+
 # Export important types, functions, and abstract types
 export DEF, GR, SimpleEOS, TabularKernel, Physics, StellarObject, AstrophysicalFramework, simulate!, calculate!, update_framework!, input_parameters
 export get_inputpool

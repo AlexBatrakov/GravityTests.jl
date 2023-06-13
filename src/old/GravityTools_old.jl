@@ -21,7 +21,7 @@ include("AstrophysicalFramework.jl")
 
 
 #include("Refinement2DGrid.jl")
-#include("KernelFramework.jl")G
+#include("KernelFramework.jl")
 #include("TestFramework.jl")
 #include("PhysicalFramework.jl")
 #include("PKFramework.jl")
